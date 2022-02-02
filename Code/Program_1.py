@@ -1,5 +1,6 @@
 #%%
 # liberaries
+from matplotlib.font_manager import list_fonts
 import mysql.connector
 from mysql.connector import errorcode
 import sys
@@ -33,12 +34,13 @@ def connect_to_mysql():
 
 # defining classes
 class Organism:
-    def __init__(self, name, cid=[] ,iid=[],uid=[], res=[]):
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], res=[]):
         self.name = name
-        self.cid = cid
-        self.iid = iid
-        self.uid = uid
-        self.res = res
+        self.cid  = cid
+        self.iid  = iid
+        self.uid  = uid
+        self.strv = strv
+        self.res  = res
 
     def get_db_info(self,query, parameters):
         self.cnx = connect_to_mysql()
@@ -49,7 +51,6 @@ class Organism:
             while row != None:
                 self.res.append(row)
                 row = cursor.fetchone()
-            
         except Exception as a:
             print("Something is wrong in the query:")
             print(a)
@@ -63,7 +64,7 @@ class Organism:
             print("no results for {}".format(self.name))
             print("executed query:")
             print(cursor._executed)
-            raise
+            exit()
 
     def close_connection(self):
         self.cnx.close()
@@ -77,64 +78,70 @@ class Organism:
 
 
 class EC_number(Organism):
-    def __init__(self, name, cid=[],iid=[],uid=[]):
-        super().__init__(name,cid,iid,uid)
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], res=[]):
+        super().__init__(name,cid,iid,uid,strv,res )
 
 class Activator(Organism):
-    def __init__(self, name, cid=[],iid=[],uid=[]):
-        super().__init__(name,cid,iid,uid)
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], res=[]):
+        super().__init__(name,cid,iid,uid,strv,res)
 
-    def get_db_info(self,query, parameters):
-        super().get_db_info(query, parameters)
-        self.name = "name"
-
-
+    def load_results(self):
+        super().load_results()
+        self.strv = [self.res[i][3] for i in range(len(self.res))]
+        print("strv = {} ".format(self.strv))
 
 
 # %% EC query
 def main():
-    query = ("""select cid,iid, uid from main where uid in 
+    # constructing object for organism
+    print("constructing Organism Object ***")
+    query = ("""select distinct cid,iid, uid from main where uid in 
     (select refv from main where refv in (select uid from main 
     where cid =1 and refv = 0) and strv = %s)""")
     parameter = (organism,)
-
-    # constructing object for organism
     O_obj = Organism(organism)
     O_obj.get_db_info(query,parameter)
     O_obj.load_results()
     O_obj.close_connection()
-
-    query = ("""select cid, iid, uid from main where 
+    
+    # constructing EC Object
+    print("constructing EC Object ***")
+    query = ("""select distinct cid, iid, uid from main where 
     uid in (select refv from main where refv in 
     (select uid from main where cid = 2 and refv = 0) 
     and iid = 17 and strv = %s)""")
     parameter = (ec_number,)
-
     ec_obj = EC_number(ec_number)
     ec_obj.get_db_info(query,parameter)
     ec_obj.load_results()
     ec_obj.close_connection()
 
     # inhibitor uid
-
+    print("constructing Inhibitor Object ***")
     query = (
-    """(select cid,iid,uid from main where refv in 
+    """select distinct t1.cid,t1.iid,t1.uid, t3.strv from main as t1 
+    join main as t2 
+    on t2.cid=t1.cid and t2.iid = t1.iid
+    join main as t3
+    on t3.refv = t2.uid
+    where t1.refv in 
     (select uid from main where refv in 
     (select uid from main where refv in 
-    (select uid from main where refv = %s and cid = 6 and iid = 1) 
-    and cid = %s and iid = %s) and cid = 6 and iid = 1))"""
+    (select uid from main where cid = 6 and iid = 1 and refv = %s) 
+    and cid = %s and iid = %s) and cid = 6 and iid = 1)
+    and t2.refv = 0 and t3.cid = 5 AND t3.iid in (1,2,3)
+    having CHAR_LENGTH(t3.strv) < 4
+"""
     )
-    parameter = (O_obj.uid[0],ec_obj.cid[0],ec_obj.iid[0])
+    parameter = (O_obj.uid[0], ec_obj.cid[0],ec_obj.iid[0])
     print(parameter)
     param_obj = Activator("test")
     param_obj.get_db_info(query,parameter)
     param_obj.load_results()
-    param_obj.close_connection()
+    param_obj.iid = [169,1]
+    param_obj.cid = [4,4]
+    param_obj.res = [(4,169,178798)]
 main()
-#%%
- 
-#%%
-
-
  
     
+# %%
