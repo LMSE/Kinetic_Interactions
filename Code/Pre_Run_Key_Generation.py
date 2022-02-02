@@ -10,6 +10,10 @@ input_folder = "\Input\\"
 file_name = "key.json"
 dump_dir = dirname(dirname(abspath(__file__))) +input_folder
 dump_file = dump_dir + file_name
+
+if not os.path.exists(dump_dir):
+    os.makedirs(dump_dir)
+
 try:
     os.path.isdir(dump_dir)
 except:
