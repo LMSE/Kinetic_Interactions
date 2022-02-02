@@ -33,21 +33,21 @@ def connect_to_mysql():
 
 # defining classes
 class Organism:
-    def __init__(self, name, cid=[] ,iid=[],uid=[]):
+    def __init__(self, name, cid=[] ,iid=[],uid=[], res=[]):
         self.name = name
         self.cid = cid
         self.iid = iid
         self.uid = uid
+        self.res = res
 
     def get_db_info(self,query, parameters):
-        res = []
         self.cnx = connect_to_mysql()
         cursor = self.cnx.cursor()
         try:
             cursor.execute(query, parameters)
             row = cursor.fetchone()
             while row != None:
-                res.append(row)
+                self.res.append(row)
                 row = cursor.fetchone()
             
         except Exception as a:
@@ -59,20 +59,22 @@ class Organism:
             print(cursor._executed)
             self.cnx.close()
 
-        if not res:
+        if not self.res:
             print("no results for {}".format(self.name))
             print("executed query:")
             print(cursor._executed)
-        else:
-            print(res)
-            self.cid = [res[i][0] for i in range(len(res))]
-            self.iid = [res[i][1] for i in range(len(res))]
-            self.uid = [res[i][2] for i in range(len(res))]
-            print("cid = {} ,iid = {} and uid = {}".format(self.cid,self.iid, self.uid))
+            raise
 
     def close_connection(self):
         self.cnx.close()
-        
+
+    def load_results(self):
+        print("loading results ...")
+        self.cid = [self.res[i][0] for i in range(len(self.res))]
+        self.iid = [self.res[i][1] for i in range(len(self.res))]
+        self.uid = [self.res[i][2] for i in range(len(self.res))]
+        print("cid = {} ,iid = {} and uid = {}".format(self.cid,self.iid, self.uid))
+
 
 class EC_number(Organism):
     def __init__(self, name, cid=[],iid=[],uid=[]):
@@ -99,6 +101,7 @@ def main():
     # constructing object for organism
     O_obj = Organism(organism)
     O_obj.get_db_info(query,parameter)
+    O_obj.load_results()
     O_obj.close_connection()
 
     query = ("""select cid, iid, uid from main where 
@@ -109,6 +112,7 @@ def main():
 
     ec_obj = EC_number(ec_number)
     ec_obj.get_db_info(query,parameter)
+    ec_obj.load_results()
     ec_obj.close_connection()
 
     # inhibitor uid
@@ -124,17 +128,11 @@ def main():
     print(parameter)
     param_obj = Activator("test")
     param_obj.get_db_info(query,parameter)
+    param_obj.load_results()
     param_obj.close_connection()
-
-    # inhibitor name
-    query = (
-        """select strv from main where refv in 
-    (select uid from main where cid = %s and iid = %s and refv = 0) 
-    and cid = 5 and iid in (3,2,1) and row = 1
-    """
-    )
-
 main()
+
+
 #%%
 
 
