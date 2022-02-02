@@ -34,13 +34,14 @@ def connect_to_mysql():
 
 # defining classes
 class Organism:
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], res=[]):
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], comment = [], res=[]):
         self.name = name
         self.cid  = cid
         self.iid  = iid
         self.uid  = uid
         self.strv = strv
         self.res  = res
+        self.comment = comment
 
     def get_db_info(self,query, parameters):
         self.cnx = connect_to_mysql()
@@ -70,28 +71,32 @@ class Organism:
         self.cnx.close()
 
     def load_results(self):
-        print("loading results ...")
+        # print("loading results ...")
         self.cid = [self.res[i][0] for i in range(len(self.res))]
         self.iid = [self.res[i][1] for i in range(len(self.res))]
         self.uid = [self.res[i][2] for i in range(len(self.res))]
-        print("cid = {} ,iid = {} and uid = {}".format(self.cid,self.iid, self.uid))
+        # print("cid = {} ,iid = {} and uid = {}".format(self.cid,self.iid, self.uid))
 
+    def get_results(self):
+        print("obtained results are \n {}".format(self.res))
 
 class EC_number(Organism):
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], res=[]):
-        super().__init__(name,cid,iid,uid,strv,res )
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], comment = [],res=[]):
+        super().__init__(name,cid,iid,uid,strv,comment,res )
 
 class Activator(Organism):
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], res=[]):
-        super().__init__(name,cid,iid,uid,strv,res)
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], comment = [], res=[]):
+        super().__init__(name,cid,iid,uid,strv,comment,res)
 
     def load_results(self):
         super().load_results()
         self.strv = [self.res[i][3] for i in range(len(self.res))]
-        print("strv = {} ".format(self.strv))
+        self.comment = [self.res[i][4] for i in range(len(self.res))]
+        # print("strv = {} ".format(self.strv))
+    
 
 
-# %% EC query
+#  EC query
 def main():
     # constructing object for organism
     print("constructing Organism Object ***")
@@ -119,28 +124,31 @@ def main():
     # inhibitor uid
     print("constructing Inhibitor Object ***")
     query = (
-    """select distinct t1.cid,t1.iid,t1.uid, t3.strv from main as t1 
+    """select distinct t1.cid,t1.iid,t1.uid, t3.strv,
+    if(t4.iid=10,"Inhibitor",if(t4.iid=11,"Activator", if(t4.iid=12,"Cofactor","Else"))) 
+    from main as t1 
     join main as t2 
     on t2.cid=t1.cid and t2.iid = t1.iid
     join main as t3
     on t3.refv = t2.uid
+    join main as t4
+    on t4.refv = t1.uid
     where t1.refv in 
     (select uid from main where refv in 
     (select uid from main where refv in 
     (select uid from main where cid = 6 and iid = 1 and refv = %s) 
     and cid = %s and iid = %s) and cid = 6 and iid = 1)
     and t2.refv = 0 and t3.cid = 5 AND t3.iid in (1,2,3)
-    having CHAR_LENGTH(t3.strv) < 4
+    order by CHAR_LENGTH(t3.strv) ASC limit 1
 """
     )
     parameter = (O_obj.uid[0], ec_obj.cid[0],ec_obj.iid[0])
-    print(parameter)
-    param_obj = Activator("test")
+    param_obj = Activator("activators")
+    param_obj.get_results()
     param_obj.get_db_info(query,parameter)
+    param_obj.get_results()
     param_obj.load_results()
-    param_obj.iid = [169,1]
-    param_obj.cid = [4,4]
-    param_obj.res = [(4,169,178798)]
+
 main()
  
     
