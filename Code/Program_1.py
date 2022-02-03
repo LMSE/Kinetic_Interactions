@@ -1,12 +1,14 @@
 #%%
 # liberaries
+from lib2to3.pytree import _Results
 from matplotlib.font_manager import list_fonts
 import mysql.connector
 from mysql.connector import errorcode
 import json
 from os.path import dirname, abspath
 import pandas as pd
-from pprint import pprint
+
+import os
 
 # defining variables
 input_folder = "\Input\\"
@@ -16,7 +18,12 @@ ec_number = "5.3.1.9"
 dir = dirname(dirname(abspath(__file__))) 
 input_dir = dir + input_folder
 key = input_dir + file_name
-logfile = dir + "\log.txt"
+log_dir = dir + "\log\"
+logfile = dir + "\\log.txt"
+
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
 
 # defining functions
 def NoDuplicates(seq, idfun=None): 
@@ -52,13 +59,14 @@ def connect_to_mysql():
 
 # defining classes
 class Organism:
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], comment = [], res=[]):
-        print("constucting {}".format(name))
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [], res=[]):
+        print("constucting {}".format(name), file=open(logfile, "a"))
         self.name       = name
         self.cid        = cid
         self.iid        = iid
         self.uid        = uid
         self.strv       = strv
+        self.floatv     = floatv
         self.res        = res
         self.comment    = comment
 
@@ -72,7 +80,7 @@ class Organism:
                 self.res.append(row)
                 row     = cursor.fetchone()
         except Exception as a:
-            print("Something is wrong in the query:")
+            print("Something is wrong in the query:",file=open(logfile, "a"))
             print(a)
             print("Mysql warnings:")
             print(cursor._fetch_warnings())
@@ -81,8 +89,8 @@ class Organism:
             self.cnx.close()
 
         if not self.res:
-            print("no results for {}".format(self.name))
-            print("executed query:")
+            print("no results for {}".format(self.name),file=open(logfile, "a"))
+            print("executed query:",file=open(logfile, "a"))
             print(cursor._executed)
             exit()
 
@@ -95,38 +103,41 @@ class Organism:
         self.uid        = [self.res[i][2] for i in range(len(self.res))]
 
     def print_results(self):
-        print("results for {} are: \n {}".format(self.name, self.res))
+        print("results for {} are: \n {}".format(self.name, self.res),file=open(logfile, "a"))
 
 class EC_number(Organism):
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], comment = [],res=[]):
-        super().__init__(name,cid,iid,uid,strv,comment,res )
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [],res=[]):
+        super().__init__(name,cid,iid,uid,strv,floatv,comment,res )
 
 class Activator(Organism):
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], comment = [], res=[]):
-        super().__init__(name,cid,iid,uid,strv,comment,res)
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [], res=[]):
+        super().__init__(name,cid,iid,uid,strv,floatv,comment,res)
 
     def load_results_into_object(self):
         super().load_results_into_object()
         self.strv       = [self.res[i][3] for i in range(len(self.res))]
         self.comment    = [self.res[i][4] for i in range(len(self.res))]
-    
+        self.floatv     = [self.res[i][5] for i in range(len(self.res))]
+
     def cleared_result(self):
-        results         = {}
-        unique_set      = NoDuplicates(self.uid)
-        results["uid"]  = self.uid
-        results["cid"]  = self.cid
-        results["iid"]  = self.iid
-        results["strv"] = self.strv
-        results["lstrv"]= [len(item) for item in self.strv]
-        results["tag"]  = self.comment
-        df = pd.DataFrame.from_dict(results)
-        res_df = pd.DataFrame(data = None, columns= df.columns)
+        results             = {}
+        unique_set          = NoDuplicates(self.uid)
+        results["uid"]      = self.uid
+        results["cid"]      = self.cid
+        results["iid"]      = self.iid
+        results["strv"]     = self.strv
+        results["lstrv"]    = [len(item) for item in self.strv]
+        results["floatv"]   = self.floatv
+        results["tag"]      = self.comment
+        df                  = pd.DataFrame.from_dict(results)
+        res_df              = pd.DataFrame(data = None, columns= df.columns)
 
         for i in range(len(unique_set)):
-            lenmin      = min(df.loc[(df.uid == unique_set[i]), "lstrv"].values)
-            temp_df     = df.loc[ (df.uid==unique_set[i]) & (df.lstrv == lenmin)]
-            minin       = min(temp_df.index)
-            res_df      = res_df.append(temp_df.loc[minin,:])
+            lenmin          = min(df.loc[(df.uid == unique_set[i]), "lstrv"].values)
+            temp_df         = df.loc[ (df.uid==unique_set[i]) & (df.lstrv == lenmin)]
+            minin           = min(temp_df.index)
+            res_df          = res_df.append(temp_df.loc[minin,:])
+        res_df          = res_df.drop(columns=['lstrv'])
         return res_df
 
 #  Function main_analyze  
@@ -182,12 +193,13 @@ def main_analyze(ec_name, organism_name):
     param_obj.get_db_info(query,parameter)
     param_obj.load_results_into_object()
     param_obj.close_connection()
-    dic = param_obj.cleared_result()
-    print("run",file=open(logfile, "a"))
-    print(dic,file=open(logfile, "a"))
-    print(dic)
+    results = param_obj.cleared_result()
 
-main_analyze(ec_number, organism)
+    with open(logfile,'a') as f:
+        dfAsString = results.to_string(header=True,index=False)
+        f.write(dfAsString)
+
+    return results
 
  
     
