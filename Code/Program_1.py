@@ -111,12 +111,12 @@ class Activator(Organism):
             res_df = res_df.append(df.loc[ (df.uid==myset[i]) & (df.lstrv == lenmin)])
         return res_df
 #  EC query
-def main():
+def main_analyze(ec_name, organism_name):
     # constructing object for organism
     query = ("""select distinct cid,iid, uid from main where uid in 
     (select refv from main where refv in (select uid from main 
     where cid =1 and refv = 0) and strv = %s)""")
-    parameter           = (organism,)
+    parameter           = (organism_name,)
     O_obj               = Organism(organism)
     O_obj.get_db_info(query,parameter)
     O_obj.load_results_into_object()
@@ -128,7 +128,7 @@ def main():
     uid in (select refv from main where refv in 
     (select uid from main where cid = 2 and refv = 0) 
     and iid = 17 and strv = %s)""")
-    parameter           = (ec_number,)
+    parameter           = (ec_name,)
     ec_obj              = EC_number(ec_number)
     ec_obj.get_db_info(query,parameter)
     ec_obj.load_results_into_object()
@@ -165,7 +165,8 @@ def main():
     print(dic,file=open(logfile, "a"))
     print(dic)
 
-main()
+main_analyze(ec_number, organism)
+
  
     
 # %%
