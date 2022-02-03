@@ -19,6 +19,22 @@ key = input_dir + file_name
 logfile = dir + "\log.txt"
 
 # defining functions
+def NoDuplicates(seq, idfun=None): 
+   # order preserving
+   if idfun is None:
+       def idfun(x): return x
+   seen = {}
+   result = []
+   for item in seq:
+       marker = idfun(item)
+       # in old Python versions:
+       # if seen.has_key(marker)
+       # but in new ones:
+       if marker in seen: continue
+       seen[marker] = 1
+       result.append(item)
+   return result
+
 # connect to mysql and return cursor
 def connect_to_mysql():
     with open(key) as jsonfile:
@@ -95,22 +111,25 @@ class Activator(Organism):
         self.comment    = [self.res[i][4] for i in range(len(self.res))]
     
     def cleared_result(self):
-        myset = list(set(self.uid))
         results         = {}
+        unique_set      = NoDuplicates(self.uid)
         results["uid"]  = self.uid
         results["cid"]  = self.cid
         results["iid"]  = self.iid
         results["strv"] = self.strv
         results["lstrv"]= [len(item) for item in self.strv]
         results["tag"]  = self.comment
-        lenmin          = min(results["lstrv"])
         df = pd.DataFrame.from_dict(results)
         res_df = pd.DataFrame(data = None, columns= df.columns)
-        for i in range(len(myset)):
-            
-            res_df = res_df.append(df.loc[ (df.uid==myset[i]) & (df.lstrv == lenmin)])
+
+        for i in range(len(unique_set)):
+            lenmin      = min(df.loc[(df.uid == unique_set[i]), "lstrv"].values)
+            temp_df     = df.loc[ (df.uid==unique_set[i]) & (df.lstrv == lenmin)]
+            minin       = min(temp_df.index)
+            res_df      = res_df.append(temp_df.loc[minin,:])
         return res_df
-#  EC query
+
+#  Function main_analyze  
 def main_analyze(ec_name, organism_name):
     # constructing object for organism
     query = ("""select distinct cid,iid, uid from main where uid in 
@@ -152,10 +171,10 @@ def main_analyze(ec_name, organism_name):
     (select uid from main where cid = 6 and iid = 1 and refv = %s ) 
     and cid = %s and iid = %s) and cid = 6 and iid = 1)
     and t2.refv = 0 and t3.cid = 5 AND t3.iid in (1,2,3)
-    order by CHAR_LENGTH(t3.strv) ASC
+    order by uid, CHAR_LENGTH(t3.strv) ASC
 """
     )
-    parameter           = (O_obj.uid[0], ec_obj.cid[0],ec_obj.iid[0])
+    parameter           = (O_obj.uid[0],ec_obj.cid[0],ec_obj.iid[0])
     param_obj           = Activator("activators")
     param_obj.get_db_info(query,parameter)
     param_obj.load_results_into_object()
