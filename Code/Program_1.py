@@ -156,25 +156,28 @@ def main_analyze(ec_name, organism_name):
 
     # inhibitor uid
     query = (
-    """select distinct t1.cid,t1.iid,t1.uid, t3.strv,
-    if(t4.iid=10,"Inhibitor",if(t4.iid=11,"Activator", if(t4.iid=12,"Cofactor","Else"))) 
-    from main as t1 
-    join main as t2 
+    """select distinct t1.cid as `cid`, t1.iid as `iid` ,t1.uid as `uid`, t3.strv as `Compound_name`,
+    if(t4.iid=10,"Inhibitor",if(t4.iid=11,"Activator", if(t4.iid=12,"Cofactor","Else"))) as `Tag` ,
+    t5.floatV as `K_I_value`
+    from main as t1 # level of compound under the reaction
+    join main as t2 # level of compound itself
     on t2.cid=t1.cid and t2.iid = t1.iid
-    join main as t3
+    join main as t3 # level of compound properties i.e. name
     on t3.refv = t2.uid
-    join main as t4
+    join main as t4 # level of inhibitor properties i.e inhibitory tag
     on t4.refv = t1.uid
+    join main as t5 # level of inhibitor properties i.e kinetic parameter K_I
+    on t5.refv = t1.uid
     where t1.refv in 
     (select uid from main where refv in 
     (select uid from main where refv in 
-    (select uid from main where cid = 6 and iid = 1 and refv = %s ) 
-    and cid = %s and iid = %s) and cid = 6 and iid = 1)
-    and t2.refv = 0 and t3.cid = 5 AND t3.iid in (1,2,3)
+    (select uid from main where cid = 6 and iid = 1) 
+    and cid = %s and iid = %s ) and cid = 6 and iid = 1)
+    and t2.refv = 0 and t3.cid = 5 AND t3.iid in (1,2,3) and t4.iid in (10,11,12) and t5.iid = 18
     order by uid, CHAR_LENGTH(t3.strv) ASC
 """
     )
-    parameter           = (O_obj.uid[0],ec_obj.cid[0],ec_obj.iid[0])
+    parameter           = (ec_obj.cid[0],ec_obj.iid[0])
     param_obj           = Activator("activators")
     param_obj.get_db_info(query,parameter)
     param_obj.load_results_into_object()
