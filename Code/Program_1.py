@@ -1,25 +1,22 @@
 #%%
 # liberaries
-from lib2to3.pytree import _Results
-from matplotlib.font_manager import list_fonts
 import mysql.connector
 from mysql.connector import errorcode
 import json
 from os.path import dirname, abspath
 import pandas as pd
-
 import os
 
 # defining variables
-input_folder = "\Input\\"
+input_folder = "\\Input\\"
 file_name = "key.json"
 organism = 'escherichia coli'
 ec_number = "5.3.1.9"
 dir = dirname(dirname(abspath(__file__))) 
 input_dir = dir + input_folder
 key = input_dir + file_name
-log_dir = dir + "\log\"
-logfile = dir + "\\log.txt"
+log_dir = dir + "\\log\\"
+logfile = log_dir + "log.txt"
 
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
@@ -202,5 +199,6 @@ def main_analyze(ec_name, organism_name):
     return results
 
  
-    
+
+main_analyze(ec_number,organism)
 # %%
