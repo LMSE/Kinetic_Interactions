@@ -8,17 +8,17 @@ import os
 from datetime import datetime
 import sys
 
-def is_file_empty(file_path):
+def is_file_nonempty(file_path):
     """ Check if file is empty by confirming if its size is 0 bytes"""
     # Check if file exist and it is empty
-    return os.path.exists(file_path) and os.stat(file_path).st_size <= 10
+    return os.path.exists(file_path) and os.stat(file_path).st_size >= 10
 
 def generate_key():
     if not os.path.exists(c.data_dir):
         print("generating directory {}".format(c.data_dir))
         os.makedirs(c.data_dir)
         
-    if not is_file_empty(c.key_file):
+    if is_file_nonempty(c.key_file):
         # non empty file exists
         return 0
 
