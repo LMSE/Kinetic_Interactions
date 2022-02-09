@@ -85,6 +85,7 @@ class Activator(Organism):
             lenmin          = min(df.loc[(df.uid == unique_set[i]), "lstrv"].values)
             temp_df         = df.loc[ (df.uid==unique_set[i]) & (df.lstrv == lenmin)]
             minin           = min(temp_df.index)
-            res_df          = res_df.append(temp_df.loc[minin,:])
+            temp_df         = temp_df.loc[minin,:].to_frame().T
+            res_df          = pd.concat( [res_df, temp_df ], axis = 0, ignore_index=True)
         res_df          = res_df.drop(columns=['lstrv'])
         return res_df
