@@ -131,7 +131,6 @@ def analyze_organism():
     O_obj.check_res()
     O_obj.load_results_into_object()
     O_obj.print_results()
-    O_obj.close_connection()
     return O_obj
 
 def analyze_EC():
@@ -147,7 +146,6 @@ def analyze_EC():
     ec_obj.check_res()
     ec_obj.load_results_into_object()
     ec_obj.print_results()
-    ec_obj.close_connection()
     return ec_obj
 
 def analyze_regulator():
@@ -156,14 +154,17 @@ def analyze_regulator():
     ec_obj = analyze_EC()
     # inhibitor uid
     query = (
-    """select distinct t1.cid as `cid`, t1.iid as `iid` ,t1.uid as `uid`, t3.strv as `Compound_name`,
+    """ select distinct t1.cid as `cid`, t1.iid as `iid` ,t1.uid as `uid`, t3.strv as `Compound_name`,
     if(t4.iid=10,"Inhibitor",if(t4.iid=11,"Activator", if(t4.iid=12,"Cofactor","Else"))) as `Tag` ,
-    t5.floatV as `K_I_value`
+    t5.floatV as `K_I_value`,
+    t6.strv as `InChIKey`
     from main as t1 # level of compound under the reaction
     join main as t2 # level of compound itself
     on t2.cid=t1.cid and t2.iid = t1.iid
     join main as t3 # level of compound properties i.e. name
     on t3.refv = t2.uid
+    join main as t6
+    on t3.refv = t6.refv
     join main as t4 # level of inhibitor properties i.e inhibitory tag
     on t4.refv = t1.uid
     join main as t5 # level of inhibitor properties i.e kinetic parameter K_I
@@ -172,18 +173,18 @@ def analyze_regulator():
     (select uid from main where refv in 
     (select uid from main where refv in 
     (select uid from main where cid = 6 and iid = 1) 
-    and cid = %s and iid = %s ) and cid = 6 and iid = 1)
+    and cid = %s and iid = %s) and cid = 6 and iid = 1)
     and t2.refv = 0 and t3.cid = 5 AND t3.iid in (1,2,3) and t4.iid in (10,11,12) and t5.iid = 18
-    order by uid, CHAR_LENGTH(t3.strv) ASC
+    and t6.cid = 5 and t6.iid = 7 order by uid, CHAR_LENGTH(t3.strv) ASC;
     """
     )
     parameter           = (ec_obj.cid[0],ec_obj.iid[0])
+    print(parameter)
     param_obj           = cl.Activator("activators")
     param_obj.res = get_db_info(query,parameter)
     # param_obj.check_res()
     if param_obj.res:
         param_obj.load_results_into_object()
-        param_obj.close_connection()
         results = param_obj.cleared_result()
         append_to_log(results, True)
         generate_output(results,ec_obj.name.replace(".","-"))

@@ -5,7 +5,7 @@ import sys
 
 # defining classes
 class Organism:
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [], res=[]):
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [], res=[], structure=[]):
         h.append_to_log("constucting {}".format(name))
         self.name       = name
         self.cid        = cid
@@ -15,15 +15,13 @@ class Organism:
         self.floatv     = floatv
         self.res        = res
         self.comment    = comment
+        self.structure  = structure
 
     def check_res(self): 
         if not self.res:
                 print("no results for {}".format(self.name),file=open(c.log_file, "a"))
                 print("executed query:",file=open(c.log_file, "a"))
                 sys.exit()
-
-    def close_connection(self):
-        pass
 
     def load_results_into_object(self):
         self.cid        = [self.res[i][0] for i in range(len(self.res))]
@@ -35,18 +33,19 @@ class Organism:
         h.append_to_log("results for {} are: \n {}".format(self.name, self.res))
         
 class EC_number(Organism):
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [],res=[]):
-        super().__init__(name,cid,iid,uid,strv,floatv,comment,res )
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [],res=[], structure =[]):
+        super().__init__(name,cid,iid,uid,strv,floatv,comment,res,structure )
 
 class Activator(Organism):
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [], res=[]):
-        super().__init__(name,cid,iid,uid,strv,floatv,comment,res)
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [], res=[], structure=[]):
+        super().__init__(name,cid,iid,uid,strv,floatv,comment,res, structure)
 
     def load_results_into_object(self):
         super().load_results_into_object()
         self.strv       = [self.res[i][3] for i in range(len(self.res))]
         self.comment    = [self.res[i][4] for i in range(len(self.res))]
         self.floatv     = [self.res[i][5] for i in range(len(self.res))]
+        self.structure  = [self.res[i][6] for i in range(len(self.res))]
 
     def cleared_result(self):
         results             = {}
@@ -58,6 +57,8 @@ class Activator(Organism):
         results["lstrv"]    = [len(item) for item in self.strv]
         results["floatv"]   = self.floatv
         results["tag"]      = self.comment
+        results["InChIkey"] = self.structure
+
         df                  = pd.DataFrame.from_dict(results)
         res_df              = pd.DataFrame(data = None, columns= df.columns)
 
