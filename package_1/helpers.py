@@ -7,6 +7,7 @@ import json
 import os
 from datetime import datetime
 import sys
+global EC_list_Obj
 
 def is_file_nonempty(file_path):
     """ Check if file is empty by confirming if its size is 0 bytes"""
@@ -92,6 +93,32 @@ def connect_to_mysql():
         sys.exit(0)
     return cnx
 
+def get_db_info(query, parameters=()):
+    res = []
+    cnx        = connect_to_mysql()
+    cursor          = cnx.cursor()
+    try:
+        if not parameters:
+            cursor.execute(query)
+        else: 
+            cursor.execute(query, parameters)
+        row         = cursor.fetchone()
+        while row  != None:
+            res.append(row)
+            row     = cursor.fetchone()
+    except Exception as a:
+        print(a)
+        error = "Something is wrong in the query:"
+        error.append(a)
+        error.append(cursor._fetch_warnings())
+        print("Mysql warnings:")
+        print(cursor._fetch_warnings())
+        print("executed query:")
+        print(cursor._executed)
+        append_to_log(error)
+    cnx.close()
+    return res
+
 #  Function main_analyze  
 def analyze_organism():
     # constructing object for organism
@@ -100,7 +127,8 @@ def analyze_organism():
     where cid =1 and refv = 0) and strv = %s)""")
     O_obj               = cl.Organism(c.organism)
     parameter           = (O_obj.name,)
-    O_obj.get_db_info(query,parameter)
+    O_obj.res = get_db_info(query,parameter)
+    O_obj.check_res()
     O_obj.load_results_into_object()
     O_obj.print_results()
     O_obj.close_connection()
@@ -115,7 +143,8 @@ def analyze_EC():
     and iid = 17 and strv = %s)""")
     ec_obj              = cl.EC_number(c.ec_number)
     parameter           = (ec_obj.name,)
-    ec_obj.get_db_info(query,parameter)
+    ec_obj.res = get_db_info(query,parameter)
+    ec_obj.check_res()
     ec_obj.load_results_into_object()
     ec_obj.print_results()
     ec_obj.close_connection()
@@ -150,18 +179,35 @@ def analyze_regulator():
     )
     parameter           = (ec_obj.cid[0],ec_obj.iid[0])
     param_obj           = cl.Activator("activators")
-    param_obj.get_db_info(query,parameter)
-    param_obj.load_results_into_object()
-    param_obj.close_connection()
-    results = param_obj.cleared_result()
-    append_to_log(results, True)
-    generate_output(results,ec_obj.name.replace(".","-"))
-    return results
+    param_obj.res = get_db_info(query,parameter)
+    # param_obj.check_res()
+    if param_obj.res:
+        param_obj.load_results_into_object()
+        param_obj.close_connection()
+        results = param_obj.cleared_result()
+        append_to_log(results, True)
+        generate_output(results,ec_obj.name.replace(".","-"))
+        return results
+    else:
+        return []
 
+
+
+def generate_EC_list():
+    if os.path.exists(c.ec_list_file):
+        with open(c.ec_list_file) as json_file:
+            c.EC_list_Obj = json.load(json_file)
+    else:
+            
+        ecl_obj         = cl.Ec_list()
+        query           = "select EC, 2,IID from unique_EC order by ID, IID"
+        ecl_obj.res     = get_db_info(query)
+        c.EC_list_Obj     = ecl_obj.cleared_result()
+        
+        with open(c.ec_list_file,'w') as of:
+            json.dump(c.EC_list_Obj, of,indent = 4)
 
     
 
 
-    
 
-# %%

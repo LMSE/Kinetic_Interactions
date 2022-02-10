@@ -1,6 +1,7 @@
 import package_1.helpers as h
 import package_1.constants as c
 import pandas as pd
+import sys
 
 # defining classes
 class Organism:
@@ -15,35 +16,14 @@ class Organism:
         self.res        = res
         self.comment    = comment
 
-    def get_db_info(self,query, parameters):
-        self.cnx        = h.connect_to_mysql()
-        cursor          = self.cnx.cursor()
-        try:
-            cursor.execute(query, parameters)
-            row         = cursor.fetchone()
-            while row  != None:
-                self.res.append(row)
-                row     = cursor.fetchone()
-        except Exception as a:
-            print(a)
-            error = "Something is wrong in the query:"
-            error.append(a)
-            error.append(cursor._fetch_warnings())
-            print("Mysql warnings:")
-            print(cursor._fetch_warnings())
-            print("executed query:")
-            print(cursor._executed)
-            h.append_to_log(error)
-            self.cnx.close()
-
+    def check_res(self): 
         if not self.res:
-            print("no results for {}".format(self.name),file=open(c.log_file, "a"))
-            print("executed query:",file=open(c.log_file, "a"))
-            h.append_to_log(cursor._executed)
-            exit()
+                print("no results for {}".format(self.name),file=open(c.log_file, "a"))
+                print("executed query:",file=open(c.log_file, "a"))
+                sys.exit()
 
     def close_connection(self):
-        self.cnx.close()
+        pass
 
     def load_results_into_object(self):
         self.cid        = [self.res[i][0] for i in range(len(self.res))]
@@ -89,3 +69,18 @@ class Activator(Organism):
             res_df          = pd.concat( [res_df, temp_df ], axis = 0, ignore_index=True)
         res_df          = res_df.drop(columns=['lstrv'])
         return res_df
+
+class Ec_list():
+    def __init__(self,name=[],cid=[],iid=[],res=[]):
+        self.name   = name
+        self.cid    = cid
+        self.iid    = iid
+        self.res    = res
+
+    def cleared_result(self):
+        di = {"name":[],"iid":[],"cid":[]}
+        for item in self.res:
+            di["name"].append(item[0])
+            di["iid"].append(item[1])
+            di["cid"].append(item[2])
+        return di
