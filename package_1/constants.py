@@ -12,7 +12,6 @@ log_file_name   = "log.txt"
 key_file_name   = "key.json"
 ec_file_name    = "ec_list.json"
 organism        = 'escherichia coli'
-ec_number       = [] 
 Log_flag        = False
 EC_list_Obj     = []
 

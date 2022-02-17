@@ -180,12 +180,13 @@ def analyze_organism():
     O_obj.print_results()
     return O_obj
 
-def analyze_EC(): 
+def analyze_EC(new_EC): 
     """
     analyze_EC() query LMSE DB to obtain uid, cid and iid of a given EC number
     EC number should be defined in constants.py .
 
     return: EC object with all necessary information filled
+    param_1: EC number to be queried
     """
     # constructing EC Object
     append_to_log("cunstructing EC object...\n")
@@ -193,7 +194,7 @@ def analyze_EC():
     uid in (select refv from main where refv in 
     (select uid from main where cid = 2 and refv = 0) 
     and iid = 17 and strv = %s)""")
-    ec_obj              = cl.EC_number(c.ec_number)
+    ec_obj              = cl.EC_number(new_EC)
     parameter           = (ec_obj.name,)
     ec_obj.res = get_db_info(query,parameter)
     ec_obj.check_res()
@@ -201,15 +202,16 @@ def analyze_EC():
     ec_obj.print_results()
     return ec_obj
 
-def analyze_regulator():
+def analyze_regulator(new_EC):
     """
     analyze_regulator query LMSE DB to obtain information for all regulators under each EC number
     
     return: a dataframe with columns = [uid,cid,iid,strv,floatv,tag, InChIkey]
+    param_1 : EC number for which regulators are to be extracted
     """ 
     # call EC information from DB
     append_to_log("cunstructing regulator object...\n")
-    ec_obj = analyze_EC()
+    ec_obj = analyze_EC(new_EC)
     # inhibitor uid
     query = (
     """ select distinct t1.cid as `cid`, t1.iid as `iid` ,t1.uid as `uid`, t3.strv as `Compound_name`,
