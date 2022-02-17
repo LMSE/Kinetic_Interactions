@@ -15,6 +15,12 @@ def is_file_nonempty(file_path):
     return os.path.exists(file_path) and os.stat(file_path).st_size >= 10
 
 def generate_key():
+    """
+        generate_key() generates a key.json file in the data folder. this file holds
+        necessary information to connect to the mysql server.
+        the user should enter necessary information for the first time to create key.json
+        From then, the code extracts information from key.json
+    """
     if not os.path.exists(c.data_dir):
         print("generating directory {}".format(c.data_dir))
         os.makedirs(c.data_dir)
@@ -36,25 +42,47 @@ def generate_key():
     return 1
 
 def NoDuplicates(seq, idfun=None): 
-   # order preserving
-   if idfun is None:
-       def idfun(x): return x
-   seen = {}
-   result = []
-   for item in seq:
-       marker = idfun(item)
-       # in old Python versions:
-       # if seen.has_key(marker)
-       # but in new ones:
-       if marker in seen: continue
-       seen[marker] = 1
-       result.append(item)
-   return result
+    """
+    NoDuplicates(seq, idfun=None) remove duplicates from a given list.
+    This function does not sort the output list and data order is reserved.
+
+    param_1: seq: is an input list with duplicate enteries
+    param_2: a given function default returns the value
+
+    returns: a unique list.
+    """
+    # order preserving
+    if idfun is None:
+        def idfun(x): return x
+    seen = {}
+    result = []
+    for item in seq:
+        marker = idfun(item)
+        # in old Python versions:
+        # if seen.has_key(marker)
+        # but in new ones:
+        if marker in seen: continue
+        seen[marker] = 1
+        result.append(item)
+    return result
 
 def newline2string(newString):
+    """
+    newline2string(newString) adds a newline char to the end of a sting
+
+    param @newString: the string to which the newline chat should be added
+    returns: a string with a newline char added to the end
+    """
     return newString + '\n' if not newString.endswith('\n') else newString
 
 def append_to_log(res, End_flag=False):
+    """
+    append_to_log(res, End_flag=False) opens log file and append a string to it
+
+    param_1 @res: string/dataframe/dictionary to be inserted in the log file 
+    parame_2 @End_flag: if true, insert a final separator in the file. default = False 
+    returns: NULL
+    """
     s = '*'
     n = 30
     separator = ''.join([char*n for char in s])
@@ -79,6 +107,11 @@ def generate_output(df2print, name):
     
 # connect to mysql and return cursor
 def connect_to_mysql():
+    """
+    connect_to_mysql() creates a connection to LMSE DB using key.json file in the data folder
+
+    returns: connection object cnx
+    """
     with open(c.key_file) as jsonfile:
         data = json.load(jsonfile)
     try:
@@ -94,6 +127,14 @@ def connect_to_mysql():
     return cnx
 
 def get_db_info(query, parameters=()):
+    """
+    get_db_info(query, parameters=()) send a given query to LMSE DB and reterives results
+
+    param_1: given query type tuple
+    param_2: given parameters type tuple default is an empty tuple
+
+    return: obtained results from DB
+    """
     res = []
     cnx        = connect_to_mysql()
     cursor          = cnx.cursor()
@@ -121,6 +162,12 @@ def get_db_info(query, parameters=()):
 
 #  Function main_analyze  
 def analyze_organism():
+    """
+    analyze_organism() queries LMSE DB to obtain uid, cid and iid of a given organism name
+    organism should be defined in constants.py
+
+    return: organism object with all necessary information filled.
+    """
     # constructing object for organism
     query = ("""select distinct cid,iid, uid from main where uid in 
     (select refv from main where refv in (select uid from main 
@@ -133,7 +180,13 @@ def analyze_organism():
     O_obj.print_results()
     return O_obj
 
-def analyze_EC():
+def analyze_EC(): 
+    """
+    analyze_EC() query LMSE DB to obtain uid, cid and iid of a given EC number
+    EC number should be defined in constants.py .
+
+    return: EC object with all necessary information filled
+    """
     # constructing EC Object
     append_to_log("cunstructing EC object...\n")
     query = ("""select distinct cid, iid, uid from main where 
@@ -149,6 +202,11 @@ def analyze_EC():
     return ec_obj
 
 def analyze_regulator():
+    """
+    analyze_regulator query LMSE DB to obtain information for all regulators under each EC number
+    
+    return: a dataframe with columns = [uid,cid,iid,strv,floatv,tag, InChIkey]
+    """ 
     # call EC information from DB
     append_to_log("cunstructing regulator object...\n")
     ec_obj = analyze_EC()
@@ -195,6 +253,11 @@ def analyze_regulator():
 
 
 def generate_EC_list():
+    """
+    generate_EC_list Loads a list of unique EC numbers from LMSE DB and save it locally.
+
+    :save a json file of all unique EC numbers in data folder
+    """ 
     if os.path.exists(c.ec_list_file):
         with open(c.ec_list_file) as json_file:
             c.EC_list_Obj = json.load(json_file)
@@ -208,7 +271,10 @@ def generate_EC_list():
         with open(c.ec_list_file,'w') as of:
             json.dump(c.EC_list_Obj, of,indent = 4)
 
-    
+def load_metabolomics():
+    """
+    load_metabolomics load metabolomics data from local.
 
-
-
+    :return: a dictionary with compounds name, their concentration and std
+    """ 
+    pass

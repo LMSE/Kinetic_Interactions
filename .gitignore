@@ -1,3 +1,4 @@
 data/key.json
 log/log.txt
 output/*
+package_1/__pycache__
