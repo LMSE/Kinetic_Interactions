@@ -2,3 +2,4 @@ data/key.json
 log/log.txt
 output/*
 data/ec_list.json
+package_1/__pycache__
