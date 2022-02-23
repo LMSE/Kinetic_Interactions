@@ -121,7 +121,7 @@ class Compound():
         if there is an server error.
         """
         enco_name = self.name.replace(',','%2C').replace(' ','%20')
-        url = c2.base_url + c2.input_url + enco_name + c2.output_url
+        url = c.base_url + c.input_url + enco_name + c.output_url
         resurl = h.get_url(url)
         new_list = []
         if resurl.find("Status:") == -1:
