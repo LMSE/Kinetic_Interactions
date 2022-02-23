@@ -85,3 +85,54 @@ class Ec_list():
             di["iid"].append(item[1])
             di["cid"].append(item[2])
         return di
+
+
+# each reaction should be linked to EC number and reaction string of Database
+class Reaction():
+    def __init__(self, name, ec, compounds, cid, iid, uid):
+        self.ec             = ec
+        self.name           = name
+        self.compounds      = compounds
+        self.cid            = cid
+        self.iid            = iid
+        self.uid            = uid
+    
+    def __str__(self):
+        return "Reaction( {}, {}, {})".format(self.name, self.ec, self.iid)
+
+# compounds that are part of a reaction
+class Compound():
+    def __init__(self,name,concentration,sd,inchikey=[],cid=0,iid=0,uid=0):
+        self.name           = name
+        self.concentration  = concentration
+        self.std            = sd
+        self.inchikey       = inchikey
+        self.cid            = cid
+        self.iid            = iid
+        self.uid            = uid
+
+    def __str__(self):
+        return "{}: inchikey {}, cid {}, iid {} ".format(self.name, self.inchikey, self.cid, self.iid)
+    
+    def set_inchikey(self):
+        """
+        this function queries PubChem to reterive InChiKeys for a given compound name
+        returns: populates compound object InChiKeys for each compound or None 
+        if there is an server error.
+        """
+        enco_name = self.name.replace(',','%2C').replace(' ','%20')
+        url = c2.base_url + c2.input_url + enco_name + c2.output_url
+        resurl = h.get_url(url)
+        new_list = []
+        if resurl.find("Status:") == -1:
+            for item in resurl.splitlines():
+                new_list.append(item)
+            self.inchikey = new_list
+    
+    def set_attributes():
+        """
+        This function queries database to retrive cid, and iid of a given inchikey
+        returns: populates the compound object with cid and iid information
+        """
+
+        pass
