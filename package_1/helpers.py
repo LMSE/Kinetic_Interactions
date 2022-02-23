@@ -7,8 +7,64 @@ import json
 import os
 from datetime import datetime
 import sys
-global EC_list_Obj
+from decimal import *
+import pycurl
+import certifi
+from io import BytesIO
 
+
+def tryconvert(value, default, *types):
+    """
+    this function tries to convert a string to mentioned type.
+    if it succeed, it will return a converted string.
+    Otherwise, it will return string itself.
+    """
+    for t in types:
+        try:
+            return t(value)
+        except (ValueError, TypeError, InvalidOperation):
+            continue
+    return default
+
+def Load_metabolomics():
+    """
+    Load concentration data for each metabolites from data/metabolomics.txt
+    Then, it creates a compound object for each line of the text file
+
+    returns: a list of compound objects
+    """
+    getcontext().prec = c2.decimal_prec
+    S2f = lambda X: tryconvert(X,X,Decimal)
+    new_list = []
+    met_file = open(c2.met_file)
+    for line in met_file:
+        name, CONC, SD, LB, UP, OOM  = list(map(S2f,line.split("\t")))
+        
+        comp_obj = cl.Compound(name,CONC*OOM,SD*OOM)
+        new_list.append(comp_obj)
+    return new_list
+
+def get_url(url):
+    """
+    get_url(url) uses pycurl for REST API for transferring the data to and from a serve.
+
+    @param_1: url: input url for which results must be obtained
+    returns: resulted text file which can have multiple lines. 
+    """
+    buffer = BytesIO()
+    c = pycurl.Curl()
+    c.setopt(c.URL, url)
+    c.setopt(c.WRITEDATA, buffer)
+    c.setopt(c.CAINFO, certifi.where())
+    c.perform()
+    c.close()
+    body = buffer.getvalue()
+    return body.decode("utf-8").rstrip()
+
+def get_cid_iid():
+    query = ()
+    parameter           = (ec_obj.cid[0],ec_obj.iid[0])
+    
 def is_file_nonempty(file_path):
     """ Check if file is empty by confirming if its size is 0 bytes"""
     # Check if file exist and it is empty
@@ -239,7 +295,7 @@ def analyze_regulator(new_EC):
     """
     )
     parameter           = (ec_obj.cid[0],ec_obj.iid[0])
-    print(parameter)
+    # print(parameter)
     param_obj           = cl.Activator("activators")
     param_obj.res = get_db_info(query,parameter)
     # param_obj.check_res()
@@ -272,20 +328,4 @@ def generate_EC_list():
         
         with open(c.ec_list_file,'w') as of:
             json.dump(c.EC_list_Obj, of,indent = 4)
-
-def load_metabolomics():
-    """
-    load_metabolomics load metabolomics data from local.
-
-    :return: a dictionary with compounds name, their concentration and std
-    """ 
-    pass
-
-def calculate_etha_reg():
-    """
-    calculate_etha_reg() calculates the etha regulation term in the kinetics equation
-
-    return: a number with standard deviation listed
-    """
-    pass
 
