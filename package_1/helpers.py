@@ -280,3 +280,12 @@ def load_metabolomics():
     :return: a dictionary with compounds name, their concentration and std
     """ 
     pass
+
+def calculate_etha_reg():
+    """
+    calculate_etha_reg() calculates the etha regulation term in the kinetics equation
+
+    return: a number with standard deviation listed
+    """
+    pass
+

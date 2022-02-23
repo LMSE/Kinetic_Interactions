@@ -3,7 +3,6 @@ from os.path import dirname, abspath
 
 
 # folders and files name
-global Log_flag
 
 data_folder     = "data"
 output_folder   = "output"
