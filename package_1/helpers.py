@@ -1,4 +1,5 @@
 # %%
+# libraries
 import package_1.constants as c
 import package_1.classes as cl
 import mysql.connector
@@ -13,6 +14,7 @@ import certifi
 from io import BytesIO
 
 
+# Function definition for compounds and reactions
 def tryconvert(value, default, *types):
     """
     this function tries to convert a string to mentioned type.
@@ -33,10 +35,10 @@ def Load_metabolomics():
 
     returns: a list of compound objects
     """
-    getcontext().prec = c2.decimal_prec
+    getcontext().prec = c.decimal_prec
     S2f = lambda X: tryconvert(X,X,Decimal)
     new_list = []
-    met_file = open(c2.met_file)
+    met_file = open(c.met_file)
     for line in met_file:
         name, CONC, SD, LB, UP, OOM  = list(map(S2f,line.split("\t")))
         
@@ -62,9 +64,10 @@ def get_url(url):
     return body.decode("utf-8").rstrip()
 
 def get_cid_iid():
-    query = ()
-    parameter           = (ec_obj.cid[0],ec_obj.iid[0])
-    
+    pass
+
+
+# General Functions
 def is_file_nonempty(file_path):
     """ Check if file is empty by confirming if its size is 0 bytes"""
     # Check if file exist and it is empty
@@ -216,6 +219,7 @@ def get_db_info(query, parameters=()):
     cnx.close()
     return res
 
+# Function definition for Organims and Activators
 #  Function main_analyze  
 def analyze_organism():
     """
