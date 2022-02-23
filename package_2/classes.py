@@ -27,7 +27,7 @@ class Compound():
         return "{} with inchikey {} ".format(self.name, self.inchikey)
 
     def set_inchikey(self):
-        url = c2.base_url + c2.input_url + self.name.replace(',','%2C').replace(' ','-') + c2.output_url
+        url = c2.base_url + c2.input_url + self.name.replace(',','%2C').replace(' ','%20') + c2.output_url
         resurl = h.get_url(url)
         new_list = []
         if resurl.find("Status: 404") == -1:
