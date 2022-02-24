@@ -15,6 +15,36 @@ from io import BytesIO
 
 
 # Function definition for compounds class
+def etha_regulation(new_list):
+    getcontext().prec = c.decimal_prec
+    """
+    This function calculates etha regulation for certain types of allosteric regulation.
+    Param_1: new_list contains tuples of three elements.
+    first element is concentration, second is KI and third is tag of inhibitor or activator
+
+    returns: etha regulation
+    """
+    sum_reg = 0  # term in the denominator of etha regualation
+    etha    = 0  # etha regulation variable
+
+    if len(new_list[0]) == 3: # no Standard Deviation has passed to the function
+        for item in new_list:
+            if item[2] == "Inhibitor": # it is an inhibitor
+                sum_reg += Decimal(item[0]/item[1])
+            elif item[2] == "Activator": # it is an activator
+                sum_reg += Decimal(-item[0]/item[1])
+            else:
+                raise ValueError("Tag should be either Inhibitor or Activator")
+
+        etha = Decimal(1/(1+sum_reg))
+        if etha < 0:
+            raise ValueError("Etha regulation is negative. modify input numbers")
+    elif len(new_list[0]) == 4: # standard deviation has passed to the function
+        print("this section of code is not implemented yet")
+    else:
+        raise BaseException("Number of elements in each tuple must be 3-4.")
+    return etha
+
 
 def Load_metabolomics():
     """
@@ -45,7 +75,6 @@ def Load_metabolomics():
         append_to_log("Running to create metabolomics data lake ... \n")
         S2f = lambda X: tryconvert(X,X,Decimal)
         met_file = open(c.met_file)
-        error_list = []
         for line in met_file:
             name, CONC, SD, LB, UP, OOM  = list(map(S2f,line.split("\t")))
             append_to_log("Obtaining results for {} compound... \n".format(name))
@@ -59,6 +88,7 @@ def Load_metabolomics():
             error_comp = comp_obj.set_first14() # setting first fourteen letters of inchikey
             if error_comp:
                 c.error_compound_list.append(error_comp)
+                append_to_log("compound {} cannot be analyzed as it has too many different inchikeys".format(error_comp))
                 continue 
             comp_obj.set_attributes()  # setting cid and iid
             met_data_lake.append(comp_obj)
@@ -226,7 +256,7 @@ def connect_to_mysql():
             print("Database does not exist")
         else:
             print(err)
-        sys.exit(0)
+        sys.exit()
     return cnx
 
 def get_db_info(query, parameters=()):
@@ -316,10 +346,10 @@ def analyze_regulator(new_EC):
     ec_obj = analyze_EC(new_EC)
     # inhibitor uid
     query = (
-    """ select distinct t1.cid as `cid`, t1.iid as `iid` ,t1.uid as `uid`, t3.strv as `Compound_name`,
+    """ select distinct t1.cid as `cid`, t1.iid as `iid` ,t1.uid as `uid`, 
     if(t4.iid=10,"Inhibitor",if(t4.iid=11,"Activator", if(t4.iid=12,"Cofactor","Else"))) as `Tag` ,
     t5.floatV as `K_I_value`,
-    t6.strv as `InChIKey`
+    SUBSTRING(t6.strv,1,14) as `first14Inchikey`
     from main as t1 # level of compound under the reaction
     join main as t2 # level of compound itself
     on t2.cid=t1.cid and t2.iid = t1.iid
@@ -347,11 +377,11 @@ def analyze_regulator(new_EC):
     # param_obj.check_res()
     if param_obj.res:
         param_obj.load_results_into_object()
-        results = param_obj.cleared_result()
-        append_to_log(results, True)
-        generate_output(results,ec_obj.name.replace(".","-"))
-        return results
+        append_to_log(param_obj.to_df(), True)
+        # generate_output(results,ec_obj.name.replace(".","-"))
+        return param_obj
     else:
+        append_to_log("No regulators found!")
         return []
 
 
