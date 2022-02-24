@@ -4,3 +4,4 @@ output/*
 data/ec_list.json
 package_1/__pycache__
 package_2/__pycache__
+data/metomics_dlake.json

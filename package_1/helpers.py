@@ -14,7 +14,64 @@ import certifi
 from io import BytesIO
 
 
-# Function definition for compounds and reactions
+# Function definition for compounds class
+
+def Load_metabolomics():
+    """
+    Load concentration data for each metabolites from data/metabolomics.txt
+    Then, it opens metabolomics data lake if exists and will not run again.
+    it creates a compound object for each line of the text file
+
+    returns: a list of compound objects
+    """
+    met_data_lake = []
+    getcontext().prec = c.decimal_prec # set decimal numbers
+
+    # if the file exists and flag is false ony load the file
+    if os.path.exists(c.met_dlake_file) and not c.run_metabolomics:
+        met_data_lake = []
+        # Load data from file
+        with open(c.met_dlake_file) as json_file:
+            met_json = json.load(json_file)
+            # convert diction of list of dictionary to compound object
+        for item in met_json["results"]:
+            met_data_lake.append(cl.Compound(item["name"],Decimal(item["concentration"])\
+                ,Decimal(item["std"]), item["inchikey"], item["cid"]\
+                    , item["iid"], item["first14"]))
+
+    else: # first time run or wish to run again?
+        S2f = lambda X: tryconvert(X,X,Decimal)
+        met_file = open(c.met_file)
+        for line in met_file:
+            name, CONC, SD, LB, UP, OOM  = list(map(S2f,line.split("\t")))
+            if name in c.error_compound_list:
+                continue # do not add compounds with general names
+
+            comp_obj = cl.Compound(name,CONC*OOM,SD*OOM)
+            comp_obj.set_inchikey() # setting inchikey from PubChem
+            comp_obj.set_first14() # setting first fourteen letters of inchikey
+            comp_obj.set_attributes()  # setting cid and iid
+            met_data_lake.append(comp_obj)
+            
+        # write the file to pc and save for the next run
+        with open(c.met_dlake_file,'w') as of:
+            results = [item.to_dict() for item in met_data_lake]
+            json.dump({"results": results}, of, indent = 4)
+
+    return met_data_lake
+
+
+def get_cid_iid_uniquekey(new_first14):
+    query =("SELECT 4, id FROM LMSE.unique_key WHERE Unique_key = %s ")
+    parameter = (str(new_first14),)
+    # print(parameter)
+    result = get_db_info(query,parameter)
+    if result:
+        return result
+    else:
+        return []
+
+# General Functions
 def tryconvert(value, default, *types):
     """
     this function tries to convert a string to mentioned type.
@@ -28,24 +85,6 @@ def tryconvert(value, default, *types):
             continue
     return default
 
-def Load_metabolomics():
-    """
-    Load concentration data for each metabolites from data/metabolomics.txt
-    Then, it creates a compound object for each line of the text file
-
-    returns: a list of compound objects
-    """
-    getcontext().prec = c.decimal_prec
-    S2f = lambda X: tryconvert(X,X,Decimal)
-    new_list = []
-    met_file = open(c.met_file)
-    for line in met_file:
-        name, CONC, SD, LB, UP, OOM  = list(map(S2f,line.split("\t")))
-        
-        comp_obj = cl.Compound(name,CONC*OOM,SD*OOM)
-        new_list.append(comp_obj)
-    return new_list
-
 def get_url(url):
     """
     get_url(url) uses pycurl for REST API for transferring the data to and from a serve.
@@ -54,20 +93,15 @@ def get_url(url):
     returns: resulted text file which can have multiple lines. 
     """
     buffer = BytesIO()
-    c = pycurl.Curl()
-    c.setopt(c.URL, url)
-    c.setopt(c.WRITEDATA, buffer)
-    c.setopt(c.CAINFO, certifi.where())
-    c.perform()
-    c.close()
+    curl_obj = pycurl.Curl()
+    curl_obj.setopt(curl_obj.URL, url)
+    curl_obj.setopt(curl_obj.WRITEDATA, buffer)
+    curl_obj.setopt(curl_obj.CAINFO, certifi.where())
+    curl_obj.perform()
+    curl_obj.close()
     body = buffer.getvalue()
     return body.decode("utf-8").rstrip()
 
-def get_cid_iid():
-    pass
-
-
-# General Functions
 def is_file_nonempty(file_path):
     """ Check if file is empty by confirming if its size is 0 bytes"""
     # Check if file exist and it is empty
@@ -207,12 +241,10 @@ def get_db_info(query, parameters=()):
             res.append(row)
             row     = cursor.fetchone()
     except Exception as a:
-        print(a)
+        delim = '\n'
         error = "Something is wrong in the query:"
-        error.append(a)
-        error.append(cursor._fetch_warnings())
-        print("Mysql warnings:")
-        print(cursor._fetch_warnings())
+        print(error , a, cursor._fetch_warnings(), sep=delim)
+        error = error +delim+ str(a) +delim+ str(cursor._fetch_warnings())
         print("executed query:")
         print(cursor._executed)
         append_to_log(error)

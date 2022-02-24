@@ -2,6 +2,7 @@ import package_1.helpers as h
 import package_1.constants as c
 import pandas as pd
 import sys
+import json
 
 # defining classes
 class Organism:
@@ -102,17 +103,24 @@ class Reaction():
 
 # compounds that are part of a reaction
 class Compound():
-    def __init__(self,name,concentration,sd,inchikey=[],cid=0,iid=0,uid=0):
+    def __init__(self,name,concentration,sd,inchikey=[],cid=0,iid=0, first14 = ""):
         self.name           = name
         self.concentration  = concentration
         self.std            = sd
         self.inchikey       = inchikey
         self.cid            = cid
         self.iid            = iid
-        self.uid            = uid
+        self.first14        = first14
 
     def __str__(self):
-        return "{}: inchikey {}, cid {}, iid {} ".format(self.name, self.inchikey, self.cid, self.iid)
+        return "{}: inchikey {}, firt fourteen letters {}, cid {}, iid {} "\
+        .format(self.name, self.inchikey, self.first14, self.cid, self.iid)
+
+    # Instead of a JSON serializable class, implement a serializer method
+    def to_dict(self):
+        return {"name": self.name, "concentration": str(self.concentration) \
+            , "std": str(self.std), "inchikey":self.inchikey, "cid":str(self.cid),\
+                 "iid":str(self.iid), "first14":self.first14}
     
     def set_inchikey(self):
         """
@@ -129,10 +137,38 @@ class Compound():
                 new_list.append(item)
             self.inchikey = new_list
     
-    def set_attributes():
+    def set_first14(self):
+        key = ""
+        key_list = []
+        if not self.inchikey:
+            self.first14 = []
+        else:
+            for item in self.inchikey:
+                key_list.append(item.split("-")[0])
+
+                # print(key_list)
+            flag = all(element == key_list[0] for element in key_list)
+            if (flag):
+                # "All the elements are Equal"
+                key = key_list[0]
+            else:
+                # throw errors
+                # "All Elements are not equal"
+                raise ValueError('first fourteen letters of inchikeys are not the \
+                    same for {} compound. Inchikeys are {} . end'.format(self.name, self.inchikey))
+            self.first14 = key
+    
+    def set_attributes(self):
         """
         This function queries database to retrive cid, and iid of a given inchikey
         returns: populates the compound object with cid and iid information
         """
-
-        pass
+        if not self.inchikey:
+            self.cid = 0
+            self.iid = 0
+        else:
+            new_list = h.get_cid_iid_uniquekey(self.first14)[0]
+            self.cid = new_list[0]
+            self.iid = new_list[1]
+    
+        
