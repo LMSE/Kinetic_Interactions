@@ -2,7 +2,7 @@ import package_1.helpers as h
 import package_1.constants as c
 import pandas as pd
 import sys
-import json
+import warnings
 
 # defining classes
 class Organism:
@@ -138,8 +138,9 @@ class Compound():
             self.inchikey = new_list
     
     def set_first14(self):
-        key = ""
-        key_list = []
+        key         = ""
+        key_list    = []
+        error_comp  = ""
         if not self.inchikey:
             self.first14 = []
         else:
@@ -154,9 +155,15 @@ class Compound():
             else:
                 # throw errors
                 # "All Elements are not equal"
-                raise ValueError('first fourteen letters of inchikeys are not the \
-                    same for {} compound. Inchikeys are {} . end'.format(self.name, self.inchikey))
+                # append to log and raise a warning
+
+                h.append_to_log("Compound {} has multiple inchikeys".format(self.name))
+                warnings.warn("first fourteen letters of inchikeys are not the same for {} compound. Inchikeys are {} .end".format(self.name, self.inchikey))
+                error_comp = self.name
+
             self.first14 = key
+            
+            return error_comp
     
     def set_attributes(self):
         """

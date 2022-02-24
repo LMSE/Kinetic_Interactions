@@ -38,18 +38,28 @@ def Load_metabolomics():
             met_data_lake.append(cl.Compound(item["name"],Decimal(item["concentration"])\
                 ,Decimal(item["std"]), item["inchikey"], item["cid"]\
                     , item["iid"], item["first14"]))
+        append_to_log("Metabolomics data lake is loaded to memory... \n")
+        append_to_log("Metabolomics data is available for {} compounds... \n".format(len(met_data_lake)+1))
 
     else: # first time run or wish to run again?
+        append_to_log("Running to create metabolomics data lake ... \n")
         S2f = lambda X: tryconvert(X,X,Decimal)
         met_file = open(c.met_file)
+        error_list = []
         for line in met_file:
             name, CONC, SD, LB, UP, OOM  = list(map(S2f,line.split("\t")))
+            append_to_log("Obtaining results for {} compound... \n".format(name))
+
             if name in c.error_compound_list:
+                append_to_log ("Compound {} is in the error list".format(name))
                 continue # do not add compounds with general names
 
             comp_obj = cl.Compound(name,CONC*OOM,SD*OOM)
             comp_obj.set_inchikey() # setting inchikey from PubChem
-            comp_obj.set_first14() # setting first fourteen letters of inchikey
+            error_comp = comp_obj.set_first14() # setting first fourteen letters of inchikey
+            if error_comp:
+                c.error_compound_list.append(error_comp)
+                continue 
             comp_obj.set_attributes()  # setting cid and iid
             met_data_lake.append(comp_obj)
             

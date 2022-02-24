@@ -13,14 +13,14 @@ ec_file_name        = "ec_list.json"
 met_dlake_name      = 'metomics_dlake.json'
 organism            = 'escherichia coli'
 Log_flag            = False
-run_metabolomics    = False  # run load metabolomics function again? produce data lake again?
+run_metabolomics    = True  # run load metabolomics function again? produce data lake again?
 EC_list_Obj         = []
 met_file_name       = "metabolomics.txt"
 decimal_prec        = 4
 base_url            = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug/'
 input_url           = 'compound/name/'
 output_url          = '/property/InChIKey/TXT'
-error_compound_list = ['CMP'] # these compound names are too general and have multiple inchikeys
+error_compound_list = [] # these compound names are too general and have multiple inchikeys
 
 
 # defining directories
