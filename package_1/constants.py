@@ -9,12 +9,11 @@ output_folder       = "output"
 log_folder          = "log"
 log_file_name       = "log.txt"
 key_file_name       = "key.json"
-ec_file_name        = "ec_list.json"
+organism_file_name  = "organism_list.json"
 met_dlake_name      = 'metomics_dlake.json'
 organism            = 'escherichia coli'
 Log_flag            = False
 run_metabolomics    = False  # run load metabolomics function again? produce data lake again?
-EC_list_Obj         = []
 met_file_name       = "metabolomics.txt"
 decimal_prec        = 4
 base_url            = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug/'
@@ -32,7 +31,7 @@ log_dir             = os.path.join(dir , log_folder)
 # defining file names
 key_file            = os.path.join(data_dir , key_file_name)
 log_file            = os.path.join(log_dir , log_file_name)
-ec_list_file        = os.path.join(data_dir , ec_file_name)
+organism_list_file  = os.path.join(data_dir , organism_file_name)
 met_file            = os.path.join(data_dir , met_file_name)
 met_dlake_file      = os.path.join(data_dir, met_dlake_name)
 

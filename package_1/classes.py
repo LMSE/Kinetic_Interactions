@@ -18,6 +18,8 @@ class Organism:
         self.res        = res
         self.comment    = comment
         self.structure  = structure
+    def __str__(self):
+        return "Organism {}, with cid: {}, iid: {}".format(self.name,self.cid,self.iid)
 
     def check_res(self): 
         if not self.res:
@@ -83,22 +85,6 @@ class Activator(Organism):
         res_df = res_df.sort_values(by=['iid'])
         return res_df
 '''
-class Ec_list():
-    def __init__(self,name=[],cid=[],iid=[],res=[]):
-        self.name   = name
-        self.cid    = cid
-        self.iid    = iid
-        self.res    = res
-
-    def cleared_result(self):
-        di = {"name":[],"iid":[],"cid":[]}
-        for item in self.res:
-            di["name"].append(item[0])
-            di["iid"].append(item[1])
-            di["cid"].append(item[2])
-        return di
-
-
 # each reaction should be linked to EC number and reaction string of Database
 class Reaction():
     def __init__(self, name, ec, compounds, cid, iid, uid):
@@ -117,20 +103,22 @@ class Compound():
     def __init__(self,name,concentration,sd,inchikey=[],cid=0,iid=0, first14 = ""):
         self.name           = name
         self.concentration  = concentration
-        self.std            = sd
+        self.sd             = sd
         self.inchikey       = inchikey
         self.cid            = cid
         self.iid            = iid
         self.first14        = first14
 
     def __str__(self):
-        return "{}: inchikey {}, firt fourteen letters {}, cid {}, iid {} "\
-        .format(self.name, self.inchikey, self.first14, self.cid, self.iid)
+        return "name:{} inchikey: {}, firt_fourteen_letters: {}, cid: {},\
+             iid: {}, concentration: {}, sd: {} "\
+        .format(self.name, self.inchikey, self.first14, \
+            self.cid, self.iid, self.concentration, self.sd)
 
     # Instead of a JSON serializable class, implement a serializer method
     def to_dict(self):
         return {"name": self.name, "concentration": str(self.concentration) \
-            , "std": str(self.std), "inchikey":self.inchikey, "cid":str(self.cid),\
+            , "std": str(self.sd), "inchikey":self.inchikey, "cid":str(self.cid),\
                  "iid":str(self.iid), "first14":self.first14}
     
     def set_inchikey(self):

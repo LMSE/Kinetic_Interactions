@@ -1,4 +1,3 @@
-# %%
 # libraries
 import package_1.constants as c
 import package_1.classes as cl
@@ -12,6 +11,10 @@ from decimal import *
 import pycurl
 import certifi
 from io import BytesIO
+
+# global variables:
+global organism_list_Obj
+organism_list_Obj = []
 
 
 # Function definition for compounds class
@@ -384,24 +387,49 @@ def analyze_regulator(new_EC):
         append_to_log("No regulators found!")
         return []
 
-
-
-def generate_EC_list():
+def generate_organism_list():
     """
-    generate_EC_list Loads a list of unique EC numbers from LMSE DB and save it locally.
-
-    :save a json file of all unique EC numbers in data folder
-    """ 
-    if os.path.exists(c.ec_list_file):
-        with open(c.ec_list_file) as json_file:
-            c.EC_list_Obj = json.load(json_file)
-    else:
+    enerate_organism_list loads a list of unique organisms in the database and save it localy.
+    save a json file for all unique organisms in the data folder
+    """
+    Organism_di = {"name":[],"iid":[],"cid":[]}
+    if os.path.exists(c.organism_list_file):
+        with open(c.organism_list_file) as json_file:
+            Organism_di = json.load(json_file)
             
-        ecl_obj         = cl.Ec_list()
-        query           = "select EC, 2,IID from unique_EC order by ID, IID"
-        ecl_obj.res     = get_db_info(query)
-        c.EC_list_Obj     = ecl_obj.cleared_result()
+    else:
         
-        with open(c.ec_list_file,'w') as of:
-            json.dump(c.EC_list_Obj, of,indent = 4)
+        query           = "select distinct t2.strv,t1.cid,t1.iid from main t1 \
+            inner join main t2 on t1.uid=t2.refv where t1.cid = 1 and t1.refv = 0\
+                 and t2.cid = 5 and t2.iid = 1 and t2.row=1;"
 
+        for item in get_db_info(query):
+            Organism_di["name"].append(item[0])
+            Organism_di["iid"].append(item[2])
+            Organism_di["cid"].append(item[1])
+        
+        with open(c.organism_list_file,'w') as of:
+            json.dump(Organism_di, of,indent = 4)
+            
+    meta_list = []
+    for idx, val in enumerate(Organism_di["name"]):
+        meta_list.append(cl.Organism(name=val,cid=Organism_di["cid"][idx],iid=Organism_di["iid"][idx]))
+    return meta_list
+
+
+def generate_EC_list(new_Organism_Obj):
+    """
+    generate_EC_list Loads a list of unique EC numbers from LMSE DB for each organism.
+
+    returns: a list of ec objects
+    """ 
+    parameters      = (new_Organism_Obj.cid, new_Organism_Obj.iid)
+    query           = "select t5.strv,t4.cid,t4.iid from main t1 inner join main t2\
+        on t1.uid = t2.refv inner join main t3 \
+            on t3.refv = t2.uid inner join main t4\
+                on t4.cid=t3.cid and t4.iid = t3.iid \
+                    inner join main t5 on t5.refv = t4.uid\
+                        where t1.cid = %s and t1.iid = %s and t2.cid = 6 and \
+                            t4.refv = 0 and t5.cid = 5 and t5.iid = 17"
+    return get_db_info(query, parameters)
+    
