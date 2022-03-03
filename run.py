@@ -5,12 +5,15 @@ import sys
 from itertools import compress
 
 # main code to run package_1
+# ideally a data warehouse should be created and at each run time should be populated with new data
+
 h1.generate_key()
 metabolomics_obj_list = h1.Load_metabolomics() 
     # print(metabolomics_obj_list)
     #pprint(str(metabolomics_obj_list[0])) # sample
 # generate or load the list of organisms in the database
 a = h1.generate_organism_list()
+h1.generate_output(["Organism", "EC Number",  "Etha Regulation","Etha sd"])
 for indx, organism_obj in enumerate(a):
     # calculate average concentration and sd values for each organism
     hypos_comp = h1.calculate_ave_metabolomics(metabolomics_obj_list)
@@ -32,35 +35,22 @@ for indx, organism_obj in enumerate(a):
                     filter_conc = list(map(lambda a: regulator==a,metabolomics_obj_list))
                     if any(filter_conc):
                         obj_list = list(compress(metabolomics_obj_list, filter_conc))
+                        print(str(obj_list[0]))
+                        regulator.set_metabolomics(obj_list[0])
                         if len(obj_list)>1:
                             raise ValueError("multiple compound objects exists for compound concentration")
-                        regulator.set_metabolomics(obj_list[0])
-                        
                     else:
+                        print(str(hypos_comp))
                         regulator.set_metabolomics(hypos_comp)
+                    
+                    
+                    regulator.set_name()
+                    print(regulator.name)
                     #print(regulator.conc)
                     #print(regulator.std)
-                print(regulator_list)
                 etha_reg = h1.etha_regulation(regulator_list)
                 print(etha_reg)
-                sys.exit()
-                    
             
-
-
-"""
-# ideally a data warehouse should be created and at each run time should be populated with new data
-
-
-count = 0
-
-     # [(2, 1, 876602)]
-    print(a)
-    
-    
-    # query regulators in metabolomics lake
-    # calculate etha regulation with STD
-    if count > 10:
-        break
-    count+= 1
-    """
+                # Append results to output file.
+                h1.generate_output([organism_obj.name, ec_obj.name,  etha_reg[0],etha_reg[1]])    
+                sys.exit()

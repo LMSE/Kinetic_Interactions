@@ -12,6 +12,8 @@ import pycurl
 import certifi
 from io import BytesIO
 from itertools import chain
+import math
+import csv
 
 # global variables:
 global organism_list_Obj
@@ -32,8 +34,8 @@ def calculate_ave_metabolomics(new_list_obj):
     sum_sd   = 0
     for obj in new_list_obj:
         sum_conc += obj.concentration
-        sum_sd   += obj.sd
-    return cl.Compound(concentration=sum_conc/length,sd=sum_sd/length)
+    sum_sd   = Decimal(sum_conc/length* Decimal(0.05))
+    return cl.Compound(concentration=sum_conc,sd=sum_sd)
 
 def etha_regulation(new_list_obj):
     getcontext().prec = c.decimal_prec
@@ -44,11 +46,16 @@ def etha_regulation(new_list_obj):
 
     returns: etha regulation
     """
-    sum_reg = 0  # term in the denominator of etha regualation
+      # term in the denominator of etha regualation
     etha    = 0  # etha regulation variable
-
-    if new_list_obj[0].sd == 0: # no Standard Deviation has passed to the function
+    pro_sd  = 0  # propagated error of etha
+    # inner function to calculate etha regulation
+    def cal_etha():
+        sum_reg = 0
+        new_etha    = 0
+        
         for item in new_list_obj:
+            item.floatv = Decimal(item.floatv)
             if item.comment == "Inhibitor": # it is an inhibitor
                 sum_reg += Decimal(item.conc/item.floatv)
             elif item.comment == "Activator": # it is an activator
@@ -56,13 +63,29 @@ def etha_regulation(new_list_obj):
             else:
                 raise ValueError("Tag should be either Inhibitor or Activator")
 
-        etha = Decimal(1/(1+sum_reg))
-        if etha < 0:
+        new_etha = Decimal(1/(1+sum_reg))
+        if new_etha < 0:
             raise ValueError("Etha regulation is negative. modify input numbers")
-    else:  # standard deviation has passed to the function
-        print("this section of code is not implemented yet")
+        return new_etha
+    if new_list_obj[0].sd == 0: # no Standard Deviation has passed to the function
+        return cal_etha()  # return etha value without sd
 
-    return etha
+    else:  # standard deviation has passed to the function
+        etha = cal_etha()
+        sd_inner_term = []
+        denominator = 1
+        for regulator in new_list_obj:
+            regulator.floatv = Decimal(regulator.floatv)
+            X   = regulator.conc
+            K   = regulator.floatv
+            sx  = regulator.sd * Decimal(2/3.92)
+            sk  = Decimal(K*Decimal(0.05))
+            Y   = Decimal(X/K)
+            print(regulator.sd ,sx,sk)
+            sd_inner_term.append(Decimal(Y*Decimal(math.sqrt(sx**2+sk**2/K**2))))
+            denominator += Y
+        pro_sd  = Decimal(1/(denominator**2)) * Decimal(math.sqrt(sum(map(lambda a: a**2, sd_inner_term))))
+        return (etha,pro_sd)
 
 
 def Load_metabolomics():
@@ -102,7 +125,7 @@ def Load_metabolomics():
                 append_to_log ("Compound {} is in the error list".format(name))
                 continue # do not add compounds with general names
 
-            comp_obj = cl.Compound(name,CONC*OOM,SD*OOM)
+            comp_obj = cl.Compound(name=name,concentration=CONC*OOM,sd=SD*OOM)
             comp_obj.set_inchikey() # setting inchikey from PubChem
             error_comp = comp_obj.set_first14() # setting first fourteen letters of inchikey
             if error_comp:
@@ -251,11 +274,13 @@ def append_to_log(res, End_flag=False):
         if End_flag:
             f.write(newline2string(separator))
 
-def generate_output(df2print, name):
-    output_file = os.path.join(c.output_dir , name + ".txt")
-    with open(output_file,'a') as f:
-        line2print = df2print.to_string(header=True,index=False)
-        f.write(newline2string(line2print))
+def generate_output(list2print):
+
+    with open(c.output_file,'a', newline='') as f:
+        wr = csv.writer(f, quoting=csv.QUOTE_ALL)
+        wr.writerow(list2print)
+    
+    
     
 # connect to mysql and return cursor
 def connect_to_mysql():
@@ -446,4 +471,10 @@ def generate_EC_list(new_Organism_Obj):
     for item in EC_list_tuple:
         EC_list_obj.append(cl.EC_number(name=item[0],cid=item[1],iid=item[2],uid=item[3]))
     return EC_list_obj
-    
+
+def name_generator_compounds(new_cid,new_iid):
+    query = ("select strv from main where refv in\
+        (select uid from main where cid = %s and iid = %s and refv = 0)\
+             and cid = 5 and iid = 1 order by CHAR_LENGTH(strv) ASC limit 1")
+    parameters = (new_cid,new_iid)
+    return get_db_info(query, parameters)

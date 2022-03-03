@@ -62,6 +62,9 @@ class Regulator(Organism):
     def set_metabolomics(self,other):
         self.conc = other.concentration     # new value for concentration
         self.sd   = other.sd                # new value for standard deviation
+    
+    def set_name(self):
+        self.name = h.name_generator_compounds(self.cid,self.iid)[0][0]
 
 # compounds that are part of a reaction
 class Compound():
