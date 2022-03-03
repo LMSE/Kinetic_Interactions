@@ -28,16 +28,27 @@ class EC_number(Organism):
         
 
 class Regulator(Organism):
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [], structure=[]):
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [], structure=[],concentration=0,sd=0 ):
         super().__init__(name,cid,iid)
         self.uid        = uid
         self.strv       = strv
         self.floatv     = floatv
         self.comment    = comment
         self.structure  = structure
+        self.conc       = concentration
+        self.sd         = sd
 
     def __str__(self):
         return super().__str__()
+    
+    def __equ__(self,other):
+        try:
+            if isinstance(other):
+                return self.structure == other.first14
+            else:
+                return self.structure == other
+        except AttributeError:
+            return NotImplemented
 
     def to_dict(self):
         return {"uid": self.uid, "cid": self.cid, "iid":self.iid, "KI":self.floatv,\
@@ -47,24 +58,14 @@ class Regulator(Organism):
         new_dict = {"uid": self.uid, "cid": self.cid, "iid":self.iid, "KI":self.floatv,\
             "tag":self.comment, "first14":self.structure}
         return pd.DataFrame.from_dict(new_dict)
-
- 
-# each reaction should be linked to EC number and reaction string of Database
-class Reaction():
-    def __init__(self, name, ec, compounds, cid, iid, uid):
-        self.ec             = ec
-        self.name           = name
-        self.compounds      = compounds
-        self.cid            = cid
-        self.iid            = iid
-        self.uid            = uid
     
-    def __str__(self):
-        return "Reaction( {}, {}, {})".format(self.name, self.ec, self.iid)
+    def set_metabolomics(self,other):
+        self.conc = other.concentration     # new value for concentration
+        self.sd   = other.sd                # new value for standard deviation
 
 # compounds that are part of a reaction
 class Compound():
-    def __init__(self,name,concentration,sd,inchikey=[],cid=0,iid=0, first14 = ""):
+    def __init__(self,name="",concentration=0,sd=0,inchikey=[],cid=0,iid=0, first14 = ""):
         self.name           = name
         self.concentration  = concentration
         self.sd             = sd

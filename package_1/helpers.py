@@ -11,6 +11,7 @@ from decimal import *
 import pycurl
 import certifi
 from io import BytesIO
+from itertools import chain
 
 # global variables:
 global organism_list_Obj
@@ -18,11 +19,27 @@ organism_list_Obj = []
 
 
 # Function definition for compounds class
-def etha_regulation(new_list):
+def calculate_ave_metabolomics(new_list_obj):
+    """
+    calculate_ave_metabolomics(new_list_obj) calculates average concentration and sd in a list of compound objects
+    this value should be used for compounds that dont have a concentration value in the metabolomics file.
+    @param_1: a list of compound obj
+    return  : a compound obj with ave concentration and ave sd value.
+    """
+
+    length = len(new_list_obj)
+    sum_conc = 0
+    sum_sd   = 0
+    for obj in new_list_obj:
+        sum_conc += obj.concentration
+        sum_sd   += obj.sd
+    return cl.Compound(concentration=sum_conc/length,sd=sum_sd/length)
+
+def etha_regulation(new_list_obj):
     getcontext().prec = c.decimal_prec
     """
     This function calculates etha regulation for certain types of allosteric regulation.
-    Param_1: new_list contains tuples of three elements.
+    Param_1: new_list contains regulatior objects. each tuple belongs to a regulator
     first element is concentration, second is KI and third is tag of inhibitor or activator
 
     returns: etha regulation
@@ -30,22 +47,21 @@ def etha_regulation(new_list):
     sum_reg = 0  # term in the denominator of etha regualation
     etha    = 0  # etha regulation variable
 
-    if len(new_list[0]) == 3: # no Standard Deviation has passed to the function
-        for item in new_list:
-            if item[2] == "Inhibitor": # it is an inhibitor
-                sum_reg += Decimal(item[0]/item[1])
-            elif item[2] == "Activator": # it is an activator
-                sum_reg += Decimal(-item[0]/item[1])
+    if new_list_obj[0].sd == 0: # no Standard Deviation has passed to the function
+        for item in new_list_obj:
+            if item.comment == "Inhibitor": # it is an inhibitor
+                sum_reg += Decimal(item.conc/item.floatv)
+            elif item.comment == "Activator": # it is an activator
+                sum_reg += Decimal(-item.conc/item.floatv)
             else:
                 raise ValueError("Tag should be either Inhibitor or Activator")
 
         etha = Decimal(1/(1+sum_reg))
         if etha < 0:
             raise ValueError("Etha regulation is negative. modify input numbers")
-    elif len(new_list[0]) == 4: # standard deviation has passed to the function
+    else:  # standard deviation has passed to the function
         print("this section of code is not implemented yet")
-    else:
-        raise BaseException("Number of elements in each tuple must be 3-4.")
+
     return etha
 
 
