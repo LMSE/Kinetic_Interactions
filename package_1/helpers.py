@@ -337,7 +337,7 @@ def analyze_EC(new_EC):
     ec_obj.print_results()
     return ec_obj
 
-def analyze_regulator(new_EC):
+def generate_regulator_list(ec_obj):
     """
     analyze_regulator query LMSE DB to obtain information for all regulators under each EC number
     
@@ -346,10 +346,11 @@ def analyze_regulator(new_EC):
     """ 
     # call EC information from DB
     append_to_log("cunstructing regulator object...\n")
-    ec_obj = analyze_EC(new_EC)
+    # ec_obj = analyze_EC(new_EC)
     # inhibitor uid
     query = (
-    """ select distinct t1.cid as `cid`, t1.iid as `iid` ,t1.uid as `uid`, 
+    """\
+        select distinct t1.cid as `cid`, t1.iid as `iid` ,t1.uid as `uid`, 
     if(t4.iid=10,"Inhibitor",if(t4.iid=11,"Activator", if(t4.iid=12,"Cofactor","Else"))) as `Tag` ,
     t5.floatV as `K_I_value`,
     SUBSTRING(t6.strv,1,14) as `first14Inchikey`
@@ -365,56 +366,49 @@ def analyze_regulator(new_EC):
     join main as t5 # level of inhibitor properties i.e kinetic parameter K_I
     on t5.refv = t1.uid
     where t1.refv in 
-    (select uid from main where refv in 
-    (select uid from main where refv in 
-    (select uid from main where cid = 6 and iid = 1) 
-    and cid = %s and iid = %s) and cid = 6 and iid = 1)
+    (select uid from main where refv = %s and cid = 6 and iid = 1) and t1.cid = 4
     and t2.refv = 0 and t3.cid = 5 AND t3.iid in (1,2,3) and t4.iid in (10,11,12) and t5.iid = 18
     and t6.cid = 5 and t6.iid = 7 order by uid, CHAR_LENGTH(t3.strv) ASC;
     """
     )
-    parameter           = (ec_obj.cid[0],ec_obj.iid[0])
+    parameter           = (ec_obj.uid,)
     # print(parameter)
-    param_obj           = cl.Activator("activators")
-    param_obj.res = get_db_info(query,parameter)
-    # param_obj.check_res()
-    if param_obj.res:
-        param_obj.load_results_into_object()
-        append_to_log(param_obj.to_df(), True)
-        # generate_output(results,ec_obj.name.replace(".","-"))
-        return param_obj
-    else:
-        append_to_log("No regulators found!")
-        return []
+    regulator_list_tuple = get_db_info(query,parameter)
+    regulator_list_obj   = []
+    for item in regulator_list_tuple:
+        regulator_list_obj.append(cl.Regulator(name="",cid=item[0],iid=item[1],\
+            uid=item[2],comment=item[3],floatv=item[4],structure=item[5]))
+    return regulator_list_obj
 
 def generate_organism_list():
     """
     enerate_organism_list loads a list of unique organisms in the database and save it localy.
     save a json file for all unique organisms in the data folder
     """
-    Organism_di = {"name":[],"iid":[],"cid":[]}
+    keys = ['name', 'cid','iid']
+    Organism_list_dict = []
     if os.path.exists(c.organism_list_file):
+        print("Loading Organism List")
         with open(c.organism_list_file) as json_file:
-            Organism_di = json.load(json_file)
+            Organism_list_dict = json.load(json_file)
             
     else:
-        
+        print("Query db for Organisms ...")
         query           = "select distinct t2.strv,t1.cid,t1.iid from main t1 \
             inner join main t2 on t1.uid=t2.refv where t1.cid = 1 and t1.refv = 0\
                  and t2.cid = 5 and t2.iid = 1 and t2.row=1;"
-
-        for item in get_db_info(query):
-            Organism_di["name"].append(item[0])
-            Organism_di["iid"].append(item[2])
-            Organism_di["cid"].append(item[1])
+        organism_list = get_db_info(query)
+        Organism_list_dict = [dict(zip(keys, organism)) for organism in organism_list]
         
         with open(c.organism_list_file,'w') as of:
-            json.dump(Organism_di, of,indent = 4)
-            
-    meta_list = []
-    for idx, val in enumerate(Organism_di["name"]):
-        meta_list.append(cl.Organism(name=val,cid=Organism_di["cid"][idx],iid=Organism_di["iid"][idx]))
-    return meta_list
+            json.dump(Organism_list_dict, of, indent=4)
+    
+    # convert dictionary to list of objects       
+    Organism_list_obj = []
+    print("Creating Organism List Obj ...")
+    for val in Organism_list_dict:
+        Organism_list_obj.append(cl.Organism(name=val["name"],cid=val["cid"],iid=val["iid"]))
+    return Organism_list_obj
 
 
 def generate_EC_list(new_Organism_Obj):
@@ -424,12 +418,16 @@ def generate_EC_list(new_Organism_Obj):
     returns: a list of ec objects
     """ 
     parameters      = (new_Organism_Obj.cid, new_Organism_Obj.iid)
-    query           = "select t5.strv,t4.cid,t4.iid from main t1 inner join main t2\
+    query           = "select t5.strv,t4.cid,t4.iid, t3.uid from main t1 inner join main t2 \
         on t1.uid = t2.refv inner join main t3 \
             on t3.refv = t2.uid inner join main t4\
                 on t4.cid=t3.cid and t4.iid = t3.iid \
                     inner join main t5 on t5.refv = t4.uid\
                         where t1.cid = %s and t1.iid = %s and t2.cid = 6 and \
                             t4.refv = 0 and t5.cid = 5 and t5.iid = 17"
-    return get_db_info(query, parameters)
+    EC_list_tuple = get_db_info(query, parameters)
+    EC_list_obj   = []
+    for item in EC_list_tuple:
+        EC_list_obj.append(cl.EC_number(name=item[0],cid=item[1],iid=item[2],uid=item[3]))
+    return EC_list_obj
     

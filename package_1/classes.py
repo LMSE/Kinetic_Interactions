@@ -7,48 +7,37 @@ import warnings
 import pandas as pd
 # defining classes
 class Organism:
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [], res=[], structure=[]):
+    def __init__(self, name, cid=[] ,iid=[]):
         h.append_to_log("constucting {}".format(name))
         self.name       = name
         self.cid        = cid
         self.iid        = iid
+
+    def __str__(self):
+        return "{} {}, with cid: {}, iid: {}".format(self.__class__.__name__,self.name,self.cid,self.iid)
+
+ 
+        
+class EC_number(Organism):
+    def __init__(self, name, cid=[] ,iid=[],uid=[]):
+        super().__init__(name,cid,iid)
+        self.uid = uid
+    
+    def __str__(self):
+        return super().__str__()
+        
+
+class Regulator(Organism):
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [], structure=[]):
+        super().__init__(name,cid,iid)
         self.uid        = uid
         self.strv       = strv
         self.floatv     = floatv
-        self.res        = res
         self.comment    = comment
         self.structure  = structure
+
     def __str__(self):
-        return "Organism {}, with cid: {}, iid: {}".format(self.name,self.cid,self.iid)
-
-    def check_res(self): 
-        if not self.res:
-                print("no results for {}".format(self.name),file=open(c.log_file, "a"))
-                print("executed query:",file=open(c.log_file, "a"))
-                sys.exit()
-
-    def load_results_into_object(self):
-        self.cid        = [self.res[i][0] for i in range(len(self.res))]
-        self.iid        = [self.res[i][1] for i in range(len(self.res))]
-        self.uid        = [self.res[i][2] for i in range(len(self.res))]
-
-    def print_results(self):
-        print("results for {} are: \n {}".format(self.name, self.res))
-        h.append_to_log("results for {} are: \n {}".format(self.name, self.res))
-        
-class EC_number(Organism):
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [],res=[], structure =[]):
-        super().__init__(name,cid,iid,uid,strv,floatv,comment,res,structure )
-
-class Activator(Organism):
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [], res=[], structure=[]):
-        super().__init__(name,cid,iid,uid,strv,floatv,comment,res, structure)
-
-    def load_results_into_object(self):
-        super().load_results_into_object()
-        self.comment    = [self.res[i][3] for i in range(len(self.res))]
-        self.floatv     = [self.res[i][4] for i in range(len(self.res))]
-        self.structure  = [self.res[i][5] for i in range(len(self.res))]
+        return super().__str__()
 
     def to_dict(self):
         return {"uid": self.uid, "cid": self.cid, "iid":self.iid, "KI":self.floatv,\
@@ -59,32 +48,7 @@ class Activator(Organism):
             "tag":self.comment, "first14":self.structure}
         return pd.DataFrame.from_dict(new_dict)
 
-    def cleared_result(self):
-        pass
-    '''
-        results             = {}
-        unique_set          = h.NoDuplicates(self.uid)
-        results["uid"]      = self.uid
-        results["cid"]      = self.cid
-        results["iid"]      = self.iid
-        results["floatv"]   = self.floatv
-        results["tag"]      = self.comment
-        results["first14"]  = self.structure
-        results             = pd.DataFrame.from_dict(results)
-        h.append_to_log(results)
-        df                  = pd.DataFrame.from_dict(results)
-        res_df              = pd.DataFrame(data = None, columns= df.columns)
-        
-        for i in range(len(unique_set)):
-            lenmin          = min(df.loc[(df.uid == unique_set[i]), "lstrv"].values)
-            temp_df         = df.loc[ (df.uid==unique_set[i]) & (df.lstrv == lenmin)]
-            minin           = min(temp_df.index)
-            temp_df         = temp_df.loc[minin,:].to_frame().T
-            res_df          = pd.concat( [res_df, temp_df ], axis = 0, ignore_index=True)
-        res_df          = res_df.drop(columns=['lstrv'])
-        res_df = res_df.sort_values(by=['iid'])
-        return res_df
-'''
+ 
 # each reaction should be linked to EC number and reaction string of Database
 class Reaction():
     def __init__(self, name, ec, compounds, cid, iid, uid):
