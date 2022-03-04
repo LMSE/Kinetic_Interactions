@@ -1,4 +1,3 @@
-# %%
 # libraries
 import package_1.constants as c
 import package_1.classes as cl
@@ -12,9 +11,158 @@ from decimal import *
 import pycurl
 import certifi
 from io import BytesIO
+from itertools import chain
+import math
+import csv
+
+# global variables:
+global organism_list_Obj
+organism_list_Obj = []
 
 
-# Function definition for compounds and reactions
+# Function definition for compounds class
+def calculate_ave_metabolomics(new_list_obj):
+    """
+    calculate_ave_metabolomics(new_list_obj) calculates average concentration and sd in a list of compound objects
+    this value should be used for compounds that dont have a concentration value in the metabolomics file.
+    @param_1: a list of compound obj
+    return  : a compound obj with ave concentration and ave sd value.
+    """
+
+    length = len(new_list_obj)
+    sum_conc = 0
+    sum_sd   = 0
+    for obj in new_list_obj:
+        sum_conc += obj.concentration
+    sum_sd   = Decimal(sum_conc/length* Decimal(0.05))
+    return cl.Compound(concentration=sum_conc,sd=sum_sd)
+
+def etha_regulation(new_list_obj):
+    getcontext().prec = c.decimal_prec
+    """
+    This function calculates etha regulation for certain types of allosteric regulation.
+    Param_1: new_list contains regulatior objects. each tuple belongs to a regulator
+    first element is concentration, second is KI and third is tag of inhibitor or activator
+
+    returns: etha regulation
+    """
+      # term in the denominator of etha regualation
+    etha    = 0  # etha regulation variable
+    pro_sd  = 0  # propagated error of etha
+    # inner function to calculate etha regulation
+    def cal_etha():
+        sum_reg = 0
+        new_etha    = 0
+        
+        for item in new_list_obj:
+            item.floatv = Decimal(item.floatv)
+            if item.comment == "Inhibitor": # it is an inhibitor
+                sum_reg += Decimal(item.conc/item.floatv)
+            elif item.comment == "Activator": # it is an activator
+                sum_reg += Decimal(-item.conc/item.floatv)
+            else:
+                raise ValueError("Tag should be either Inhibitor or Activator")
+
+        new_etha = Decimal(1/(1+sum_reg))
+        if new_etha < 0:
+            raise ValueError("Etha regulation is negative. modify input numbers")
+        return new_etha
+    if new_list_obj[0].sd == 0: # no Standard Deviation has passed to the function
+        return cal_etha()  # return etha value without sd
+
+    else:  # standard deviation has passed to the function
+        etha = cal_etha()
+        sd_inner_term = []
+        denominator = 1
+        for regulator in new_list_obj:
+            regulator.floatv = Decimal(regulator.floatv)
+            X   = regulator.conc
+            K   = regulator.floatv
+            sx  = regulator.sd * Decimal(2/3.92)
+            sk  = Decimal(K*Decimal(0.05))
+            Y   = Decimal(X/K)
+            print(regulator.sd ,sx,sk)
+            sd_inner_term.append(Decimal(Y*Decimal(math.sqrt(sx**2+sk**2/K**2))))
+            denominator += Y
+        pro_sd  = Decimal(1/(denominator**2)) * Decimal(math.sqrt(sum(map(lambda a: a**2, sd_inner_term))))
+        return (etha,pro_sd)
+
+
+def Load_metabolomics():
+    """
+    Load concentration data for each metabolites from data/metabolomics.txt
+    Then, it opens metabolomics data lake if exists and will not run again.
+    it creates a compound object for each line of the text file
+
+    returns: a list of compound objects
+    """
+    met_data_lake = []
+    getcontext().prec = c.decimal_prec # set decimal numbers
+
+    # if the file exists and flag is false ony load the file
+    if os.path.exists(c.met_dlake_file) and not c.run_metabolomics:
+        met_data_lake = []
+        # Load data from file
+        with open(c.met_dlake_file) as json_file:
+            met_json = json.load(json_file)
+            # convert diction of list of dictionary to compound object
+        for item in met_json["results"]:
+            met_data_lake.append(cl.Compound(item["name"],Decimal(item["concentration"])\
+                ,Decimal(item["std"]), item["inchikey"], item["cid"]\
+                    , item["iid"], item["first14"]))
+        append_to_log("Metabolomics data lake is loaded to memory... \n")
+        append_to_log("Metabolomics data is available for {} compounds... \n".format(len(met_data_lake)+1))
+
+    else: # first time run or wish to run again?
+        append_to_log("Running to create metabolomics data lake ... \n")
+        S2f      = lambda X: tryconvert(X,X,Decimal)
+        Snewline = lambda S: S.rstrip("\n") if isinstance(S,str) else S
+        met_file = open(c.met_file)
+        for line in met_file:
+            newlist = list(map(Snewline,list(map(S2f,line.split("\t")))))
+            name = newlist[0]
+            CONC = newlist[1]
+            SD   = newlist[2] 
+            OOM  = newlist[5] 
+            org  = newlist[7]
+            cond = newlist[8] 
+            
+            append_to_log("Obtaining results for {} compound... \n".format(name))
+
+            if name in c.error_compound_list:
+                append_to_log ("Compound {} is in the error list".format(name))
+                continue # do not add compounds with general names
+
+            comp_obj = cl.Compound(name=name,concentration=CONC*OOM,sd=SD*OOM\
+                ,organism=org, condition=cond)
+            comp_obj.set_inchikey() # setting inchikey from PubChem
+            error_comp = comp_obj.set_first14() # setting first fourteen letters of inchikey
+            if error_comp:
+                c.error_compound_list.append(error_comp)
+                append_to_log("compound {} cannot be analyzed as it has too many different inchikeys".format(error_comp))
+                continue 
+            comp_obj.set_attributes()  # setting cid and iid
+            met_data_lake.append(comp_obj)
+            
+        # write the file to pc and save for the next run
+        with open(c.met_dlake_file,'w') as of:
+            results = [item.to_dict() for item in met_data_lake]
+            json.dump({"results": results}, of, indent = 4)
+
+    return met_data_lake
+
+
+def get_cid_iid_uniquekey(new_first14):
+    query =("SELECT 4, id FROM LMSE.unique_key WHERE Unique_key = %s ")
+    parameter = (str(new_first14),)
+    # print(parameter)
+    result = get_db_info(query,parameter)
+    if result:
+        return result
+    else:
+        return []
+
+# General Functions
 def tryconvert(value, default, *types):
     """
     this function tries to convert a string to mentioned type.
@@ -28,24 +176,6 @@ def tryconvert(value, default, *types):
             continue
     return default
 
-def Load_metabolomics():
-    """
-    Load concentration data for each metabolites from data/metabolomics.txt
-    Then, it creates a compound object for each line of the text file
-
-    returns: a list of compound objects
-    """
-    getcontext().prec = c.decimal_prec
-    S2f = lambda X: tryconvert(X,X,Decimal)
-    new_list = []
-    met_file = open(c.met_file)
-    for line in met_file:
-        name, CONC, SD, LB, UP, OOM  = list(map(S2f,line.split("\t")))
-        
-        comp_obj = cl.Compound(name,CONC*OOM,SD*OOM)
-        new_list.append(comp_obj)
-    return new_list
-
 def get_url(url):
     """
     get_url(url) uses pycurl for REST API for transferring the data to and from a serve.
@@ -54,20 +184,15 @@ def get_url(url):
     returns: resulted text file which can have multiple lines. 
     """
     buffer = BytesIO()
-    c = pycurl.Curl()
-    c.setopt(c.URL, url)
-    c.setopt(c.WRITEDATA, buffer)
-    c.setopt(c.CAINFO, certifi.where())
-    c.perform()
-    c.close()
+    curl_obj = pycurl.Curl()
+    curl_obj.setopt(curl_obj.URL, url)
+    curl_obj.setopt(curl_obj.WRITEDATA, buffer)
+    curl_obj.setopt(curl_obj.CAINFO, certifi.where())
+    curl_obj.perform()
+    curl_obj.close()
     body = buffer.getvalue()
     return body.decode("utf-8").rstrip()
 
-def get_cid_iid():
-    pass
-
-
-# General Functions
 def is_file_nonempty(file_path):
     """ Check if file is empty by confirming if its size is 0 bytes"""
     # Check if file exist and it is empty
@@ -158,11 +283,13 @@ def append_to_log(res, End_flag=False):
         if End_flag:
             f.write(newline2string(separator))
 
-def generate_output(df2print, name):
-    output_file = os.path.join(c.output_dir , name + ".txt")
-    with open(output_file,'a') as f:
-        line2print = df2print.to_string(header=True,index=False)
-        f.write(newline2string(line2print))
+def generate_output(list2print):
+
+    with open(c.output_file,'a', newline='') as f:
+        wr = csv.writer(f, quoting=csv.QUOTE_ALL)
+        wr.writerow(list2print)
+    
+    
     
 # connect to mysql and return cursor
 def connect_to_mysql():
@@ -182,7 +309,7 @@ def connect_to_mysql():
             print("Database does not exist")
         else:
             print(err)
-        sys.exit(0)
+        sys.exit()
     return cnx
 
 def get_db_info(query, parameters=()):
@@ -207,12 +334,10 @@ def get_db_info(query, parameters=()):
             res.append(row)
             row     = cursor.fetchone()
     except Exception as a:
-        print(a)
+        delim = '\n'
         error = "Something is wrong in the query:"
-        error.append(a)
-        error.append(cursor._fetch_warnings())
-        print("Mysql warnings:")
-        print(cursor._fetch_warnings())
+        print(error , a, cursor._fetch_warnings(), sep=delim)
+        error = error +delim+ str(a) +delim+ str(cursor._fetch_warnings())
         print("executed query:")
         print(cursor._executed)
         append_to_log(error)
@@ -262,7 +387,7 @@ def analyze_EC(new_EC):
     ec_obj.print_results()
     return ec_obj
 
-def analyze_regulator(new_EC):
+def generate_regulator_list(ec_obj):
     """
     analyze_regulator query LMSE DB to obtain information for all regulators under each EC number
     
@@ -271,13 +396,14 @@ def analyze_regulator(new_EC):
     """ 
     # call EC information from DB
     append_to_log("cunstructing regulator object...\n")
-    ec_obj = analyze_EC(new_EC)
+    # ec_obj = analyze_EC(new_EC)
     # inhibitor uid
     query = (
-    """ select distinct t1.cid as `cid`, t1.iid as `iid` ,t1.uid as `uid`, t3.strv as `Compound_name`,
+    """\
+        select distinct t1.cid as `cid`, t1.iid as `iid` ,t1.uid as `uid`, 
     if(t4.iid=10,"Inhibitor",if(t4.iid=11,"Activator", if(t4.iid=12,"Cofactor","Else"))) as `Tag` ,
     t5.floatV as `K_I_value`,
-    t6.strv as `InChIKey`
+    SUBSTRING(t6.strv,1,14) as `first14Inchikey`
     from main as t1 # level of compound under the reaction
     join main as t2 # level of compound itself
     on t2.cid=t1.cid and t2.iid = t1.iid
@@ -290,46 +416,74 @@ def analyze_regulator(new_EC):
     join main as t5 # level of inhibitor properties i.e kinetic parameter K_I
     on t5.refv = t1.uid
     where t1.refv in 
-    (select uid from main where refv in 
-    (select uid from main where refv in 
-    (select uid from main where cid = 6 and iid = 1) 
-    and cid = %s and iid = %s) and cid = 6 and iid = 1)
+    (select uid from main where refv = %s and cid = 6 and iid = 1) and t1.cid = 4
     and t2.refv = 0 and t3.cid = 5 AND t3.iid in (1,2,3) and t4.iid in (10,11,12) and t5.iid = 18
     and t6.cid = 5 and t6.iid = 7 order by uid, CHAR_LENGTH(t3.strv) ASC;
     """
     )
-    parameter           = (ec_obj.cid[0],ec_obj.iid[0])
+    parameter           = (ec_obj.uid,)
     # print(parameter)
-    param_obj           = cl.Activator("activators")
-    param_obj.res = get_db_info(query,parameter)
-    # param_obj.check_res()
-    if param_obj.res:
-        param_obj.load_results_into_object()
-        results = param_obj.cleared_result()
-        append_to_log(results, True)
-        generate_output(results,ec_obj.name.replace(".","-"))
-        return results
-    else:
-        return []
+    regulator_list_tuple = get_db_info(query,parameter)
+    regulator_list_obj   = []
+    for item in regulator_list_tuple:
+        regulator_list_obj.append(cl.Regulator(name="",cid=item[0],iid=item[1],\
+            uid=item[2],comment=item[3],floatv=item[4],structure=item[5]))
+    return regulator_list_obj
 
-
-
-def generate_EC_list():
+def generate_organism_list():
     """
-    generate_EC_list Loads a list of unique EC numbers from LMSE DB and save it locally.
-
-    :save a json file of all unique EC numbers in data folder
-    """ 
-    if os.path.exists(c.ec_list_file):
-        with open(c.ec_list_file) as json_file:
-            c.EC_list_Obj = json.load(json_file)
-    else:
+    enerate_organism_list loads a list of unique organisms in the database and save it localy.
+    save a json file for all unique organisms in the data folder
+    """
+    keys = ['name', 'cid','iid']
+    Organism_list_dict = []
+    if os.path.exists(c.organism_list_file):
+        print("Loading Organism List")
+        with open(c.organism_list_file) as json_file:
+            Organism_list_dict = json.load(json_file)
             
-        ecl_obj         = cl.Ec_list()
-        query           = "select EC, 2,IID from unique_EC order by ID, IID"
-        ecl_obj.res     = get_db_info(query)
-        c.EC_list_Obj     = ecl_obj.cleared_result()
+    else:
+        print("Query db for Organisms ...")
+        query           = "select distinct t2.strv,t1.cid,t1.iid from main t1 \
+            inner join main t2 on t1.uid=t2.refv where t1.cid = 1 and t1.refv = 0\
+                 and t2.cid = 5 and t2.iid = 1 and t2.row=1;"
+        organism_list = get_db_info(query)
+        Organism_list_dict = [dict(zip(keys, organism)) for organism in organism_list]
         
-        with open(c.ec_list_file,'w') as of:
-            json.dump(c.EC_list_Obj, of,indent = 4)
+        with open(c.organism_list_file,'w') as of:
+            json.dump(Organism_list_dict, of, indent=4)
+    
+    # convert dictionary to list of objects       
+    Organism_list_obj = []
+    print("Creating Organism List Obj ...")
+    for val in Organism_list_dict:
+        Organism_list_obj.append(cl.Organism(name=val["name"],cid=val["cid"],iid=val["iid"]))
+    return Organism_list_obj
 
+
+def generate_EC_list(new_Organism_Obj):
+    """
+    generate_EC_list Loads a list of unique EC numbers from LMSE DB for each organism.
+
+    returns: a list of ec objects
+    """ 
+    parameters      = (new_Organism_Obj.cid, new_Organism_Obj.iid)
+    query           = "select t5.strv,t4.cid,t4.iid, t3.uid from main t1 inner join main t2 \
+        on t1.uid = t2.refv inner join main t3 \
+            on t3.refv = t2.uid inner join main t4\
+                on t4.cid=t3.cid and t4.iid = t3.iid \
+                    inner join main t5 on t5.refv = t4.uid\
+                        where t1.cid = %s and t1.iid = %s and t2.cid = 6 and \
+                            t4.refv = 0 and t5.cid = 5 and t5.iid = 17"
+    EC_list_tuple = get_db_info(query, parameters)
+    EC_list_obj   = []
+    for item in EC_list_tuple:
+        EC_list_obj.append(cl.EC_number(name=item[0],cid=item[1],iid=item[2],uid=item[3]))
+    return EC_list_obj
+
+def name_generator_compounds(new_cid,new_iid):
+    query = ("select strv from main where refv in\
+        (select uid from main where cid = %s and iid = %s and refv = 0)\
+             and cid = 5 and iid = 1 order by CHAR_LENGTH(strv) ASC limit 1")
+    parameters = (new_cid,new_iid)
+    return get_db_info(query, parameters)
