@@ -50,12 +50,14 @@ def etha_regulation(new_list_obj):
     etha    = 0  # etha regulation variable
     pro_sd  = 0  # propagated error of etha
     # inner function to calculate etha regulation
-    def cal_etha():
+    def cal_etha(list_obj):
         sum_reg = 0
         new_etha    = 0
         
-        for item in new_list_obj:
+        for item in list_obj:
             item.floatv = Decimal(item.floatv)
+            if item.floatv == 0:
+                print(str(item))
             if item.comment == "Inhibitor": # it is an inhibitor
                 sum_reg += Decimal(item.conc/item.floatv)
             elif item.comment == "Activator": # it is an activator
@@ -68,10 +70,10 @@ def etha_regulation(new_list_obj):
             raise ValueError("Etha regulation is negative. modify input numbers")
         return new_etha
     if new_list_obj[0].sd == 0: # no Standard Deviation has passed to the function
-        return cal_etha()  # return etha value without sd
+        return cal_etha(new_list_obj)  # return etha value without sd
 
     else:  # standard deviation has passed to the function
-        etha = cal_etha()
+        etha = cal_etha(new_list_obj)
         sd_inner_term = []
         denominator = 1
         for regulator in new_list_obj:
