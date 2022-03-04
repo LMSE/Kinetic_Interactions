@@ -24,9 +24,9 @@ __Please follow these steps to install all required packages on your device.__
 * if the version of pycurl is not compatible with openssl, you will face this error:
 > pycurl: libcurl link-time ssl backend (nss) is different from compile-time ssl backend (openssl)
 * To debug, follow these steps:
-> pip uninstall pycurl
- export PYCURL_SSL_LIBRARY=nss
- pip install --compile --install-option="--with-nss" --no-cache-dir pycurl
+> pip uninstall pycurl  
+ export PYCURL_SSL_LIBRARY=nss  
+ pip install --compile --install-option="--with-nss" --no-cache-dir pycurl  
 
 
 ## References:
