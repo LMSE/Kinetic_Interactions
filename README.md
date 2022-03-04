@@ -6,9 +6,9 @@ this repository creates a data warehouse to caculate allosteric regulation for e
 __Please follow these steps to install all required packages on your device.__
 
 * create a conda environment
-> create a new conda env
-* creat env
 > conda create -n my_new_env python
+* check if the env is created
+> conda env list
 * activate env
 > conda activate my_new_env
 * add conda forge to channels:
@@ -19,6 +19,15 @@ __Please follow these steps to install all required packages on your device.__
 > conda install pandas
 * mysql connector
 > pip install mysql-connector-python
+* Install pycurl on your device
+> pip install pycurl
+* if the version of pycurl is not compatible with openssl, you will face this error:
+> pycurl: libcurl link-time ssl backend (nss) is different from compile-time ssl backend (openssl)
+* To debug, follow these steps:
+> pip uninstall pycurl
+> export PYCURL_SSL_LIBRARY=nss
+> pip install --compile --install-option="--with-nss" --no-cache-dir pycurl
+
 
 ## References:
 * [How to compute standard deviations from confidence intervals](https://handbook-5-1.cochrane.org/chapter_7/7_7_3_2_obtaining_standard_deviations_from_standard_errors_and.htm)
