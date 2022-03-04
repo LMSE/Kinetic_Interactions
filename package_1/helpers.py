@@ -1,4 +1,5 @@
 # libraries
+import warnings
 import package_1.constants as c
 import package_1.classes as cl
 import mysql.connector
@@ -57,7 +58,8 @@ def etha_regulation(new_list_obj):
         for item in list_obj:
             item.floatv = Decimal(item.floatv)
             if item.floatv == 0:
-                print(str(item))
+                append_to_log("warning: {} has a KI value of zero".format(str(item)))
+                continue
             if item.comment == "Inhibitor": # it is an inhibitor
                 sum_reg += Decimal(item.conc/item.floatv)
             elif item.comment == "Activator": # it is an activator
@@ -77,6 +79,8 @@ def etha_regulation(new_list_obj):
         sd_inner_term = []
         denominator = 1
         for regulator in new_list_obj:
+            if regulator.floatv == 0:
+                continue
             regulator.floatv = Decimal(regulator.floatv)
             X   = regulator.conc
             K   = regulator.floatv
