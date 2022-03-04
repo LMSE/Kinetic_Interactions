@@ -22,7 +22,7 @@ base_url            = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug/'
 input_url           = 'compound/name/'
 output_url          = '/property/InChIKey/TXT'
 error_compound_list = [] # these compound names are too general and have multiple inchikeys
-
+organism_specific_concentration = False
 
 # defining directories
 dir                 = dirname(dirname(abspath(__file__))) 

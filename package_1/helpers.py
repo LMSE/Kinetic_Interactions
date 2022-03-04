@@ -115,17 +115,26 @@ def Load_metabolomics():
 
     else: # first time run or wish to run again?
         append_to_log("Running to create metabolomics data lake ... \n")
-        S2f = lambda X: tryconvert(X,X,Decimal)
+        S2f      = lambda X: tryconvert(X,X,Decimal)
+        Snewline = lambda S: S.rstrip("\n") if isinstance(S,str) else S
         met_file = open(c.met_file)
         for line in met_file:
-            name, CONC, SD, LB, UP, OOM  = list(map(S2f,line.split("\t")))
+            newlist = list(map(Snewline,list(map(S2f,line.split("\t")))))
+            name = newlist[0]
+            CONC = newlist[1]
+            SD   = newlist[2] 
+            OOM  = newlist[5] 
+            org  = newlist[7]
+            cond = newlist[8] 
+            
             append_to_log("Obtaining results for {} compound... \n".format(name))
 
             if name in c.error_compound_list:
                 append_to_log ("Compound {} is in the error list".format(name))
                 continue # do not add compounds with general names
 
-            comp_obj = cl.Compound(name=name,concentration=CONC*OOM,sd=SD*OOM)
+            comp_obj = cl.Compound(name=name,concentration=CONC*OOM,sd=SD*OOM\
+                ,organism=org, condition=cond)
             comp_obj.set_inchikey() # setting inchikey from PubChem
             error_comp = comp_obj.set_first14() # setting first fourteen letters of inchikey
             if error_comp:

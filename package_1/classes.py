@@ -28,7 +28,8 @@ class EC_number(Organism):
         
 
 class Regulator(Organism):
-    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], comment = [], structure=[],concentration=0,sd=0 ):
+    def __init__(self, name, cid=[] ,iid=[],uid=[], strv = [], floatv = [], \
+        comment = [], structure=[],concentration=0,sd=0,condition="" ):
         super().__init__(name,cid,iid)
         self.uid        = uid
         self.strv       = strv
@@ -37,7 +38,8 @@ class Regulator(Organism):
         self.structure  = structure
         self.conc       = concentration
         self.sd         = sd
-
+        self.condition  = condition
+        
     def __str__(self):
         return super().__str__()
     
@@ -60,15 +62,17 @@ class Regulator(Organism):
         return pd.DataFrame.from_dict(new_dict)
     
     def set_metabolomics(self,other):
-        self.conc = other.concentration     # new value for concentration
-        self.sd   = other.sd                # new value for standard deviation
+        self.conc       = other.concentration     # new value for concentration
+        self.sd         = other.sd                # new value for standard deviation
+        self.condition  = other.condition
     
     def set_name(self):
         self.name = h.name_generator_compounds(self.cid,self.iid)[0][0]
 
 # compounds that are part of a reaction
 class Compound():
-    def __init__(self,name="",concentration=0,sd=0,inchikey=[],cid=0,iid=0, first14 = ""):
+    def __init__(self,name="",concentration=0,sd=0,inchikey=[],cid=0,iid=0\
+        , first14 = "", organism = "Escherichia coli", condition="Glucose "):
         self.name           = name
         self.concentration  = concentration
         self.sd             = sd
@@ -76,6 +80,8 @@ class Compound():
         self.cid            = cid
         self.iid            = iid
         self.first14        = first14
+        self.organism       = organism
+        self.condition      = condition
 
     def __str__(self):
         return "name:{} inchikey: {}, firt_fourteen_letters: {}, cid: {},\
@@ -83,11 +89,22 @@ class Compound():
         .format(self.name, self.inchikey, self.first14, \
             self.cid, self.iid, self.concentration, self.sd)
 
+    def __equ__(self,other):
+        try:
+            if isinstance(other):
+                return self.organism == other.name
+            else:
+                return self.organism == other
+
+        except AttributeError:
+            return NotImplemented 
+            
     # Instead of a JSON serializable class, implement a serializer method
     def to_dict(self):
-        return {"name": self.name, "concentration": str(self.concentration) \
-            , "std": str(self.sd), "inchikey":self.inchikey, "cid":str(self.cid),\
-                 "iid":str(self.iid), "first14":self.first14}
+        return {"name": str(self.name), "concentration": str(self.concentration) \
+            , "std": str(self.sd), "inchikey":str(self.inchikey), "cid":str(self.cid),\
+                 "iid":str(self.iid), "first14":str(self.first14), "Organism": str(self.organism),\
+                     "condition":str(self.condition)}
     
     def set_inchikey(self):
         """
@@ -129,7 +146,6 @@ class Compound():
                 error_comp = self.name
 
             self.first14 = key
-            
             return error_comp
     
     def set_attributes(self):
@@ -137,12 +153,17 @@ class Compound():
         This function queries database to retrive cid, and iid of a given inchikey
         returns: populates the compound object with cid and iid information
         """
+        res = []
         if not self.inchikey:
             self.cid = 0
             self.iid = 0
         else:
-            new_list = h.get_cid_iid_uniquekey(self.first14)[0]
-            self.cid = new_list[0]
-            self.iid = new_list[1]
+            res = h.get_cid_iid_uniquekey(self.first14)
+            if res:
+                self.cid = res[0][0]
+                self.iid = res[0][1]
+            else:
+                self.cid = 999
+                self.iid = 999
     
         
