@@ -15,8 +15,7 @@ metabolomics_obj_list = h1.Load_metabolomics()
 # generate or load the list of organisms in the database
 a = h1.generate_organism_list()
 # print(len(metabolomics_obj_list))
-h1.generate_output(["Organism", "EC Number",  "Etha Regulation","Etha sd",\
-    "regulators" , "regulator_iid", "condition"])
+
 for indx, organism_obj in enumerate(a):
     # select part of metabolomics_obj_list where organism is the same
     # print(metabolomics_obj_list[0].organism)
@@ -68,4 +67,6 @@ for indx, organism_obj in enumerate(a):
                      etha_reg[0],etha_reg[1],\
                          [regulator.name for regulator in regulator_list],\
                             [regulator.iid for regulator in regulator_list],\
-                                 [regulator.condition for regulator in regulator_list]])    
+                                 [regulator.condition for regulator in regulator_list],\
+                                     [regulator.comment for regulator in regulator_list],\
+                                         [regulator.structure for regulator in regulator_list]])    
