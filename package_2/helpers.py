@@ -7,7 +7,7 @@ def load_bigg():
     This function load BIGG model and create objects for each entery of BIGG model.
     it returns a list of objects 
     """
-    with open(c.BIGG_file, 'r') as f:
+    with open(c.BIGG_RXN_file, 'r') as f:
             lines = f.readlines()
 
     meta_data = []

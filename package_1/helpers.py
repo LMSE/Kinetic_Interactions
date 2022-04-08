@@ -30,13 +30,13 @@ def calculate_ave_metabolomics(new_list_obj):
     return  : a compound obj with ave concentration and ave sd value.
     """
 
-    length = len(new_list_obj)
+    n = len(new_list_obj)
     sum_conc = 0
     sum_sd   = 0
     for obj in new_list_obj:
         sum_conc += obj.concentration
-    sum_sd   = Decimal(sum_conc/length* Decimal(0.05))
-    return cl.Compound(concentration=sum_conc,sd=sum_sd)
+    sum_sd   = Decimal(obj.sd**2)
+    return cl.Compound(concentration=Decimal(sum_conc/n),sd=math.sqrt(sum_sd)/n)
 
 def etha_regulation(new_list_obj):
     getcontext().prec = c.decimal_prec
@@ -84,7 +84,7 @@ def etha_regulation(new_list_obj):
             regulator.floatv = Decimal(regulator.floatv)
             X   = regulator.conc
             K   = regulator.floatv
-            sx  = regulator.sd * Decimal(2/3.92)
+            sx  = regulator.sd # * Decimal(2/3.92) consider margin of error
             sk  = Decimal(K*Decimal(0.05))
             Y   = Decimal(X/K)
             print(regulator.sd ,sx,sk)
