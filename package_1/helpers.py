@@ -139,7 +139,7 @@ def Load_metabolomics():
                 append_to_log ("Compound {} is in the error list".format(name))
                 continue # do not add compounds with general names
 
-            comp_obj = cl.Compound(name=name,concentration=CONC*OOM,sd=SD*OOM\
+            comp_obj = cl.Compound(name=name,concentration=CONC*OOM*1000,sd=SD*OOM*1000\
                 ,organism=org, condition=cond)
             comp_obj.set_inchikey() # setting inchikey from PubChem
             error_comp = comp_obj.set_first14() # setting first fourteen letters of inchikey
