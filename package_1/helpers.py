@@ -84,7 +84,7 @@ def etha_regulation(new_list_obj):
             regulator.floatv = Decimal(regulator.floatv)
             X   = regulator.conc
             K   = regulator.floatv
-            sx  = regulator.sd # * Decimal(2/3.92) consider margin of error
+            sx  = Decimal(regulator.sd) # * Decimal(2/3.92) consider margin of error
             sk  = Decimal(K*Decimal(0.05))
             Y   = Decimal(X/K)
             print(regulator.sd ,sx,sk)
